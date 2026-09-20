@@ -1,0 +1,31 @@
+{
+  "application": "SatQuery AI",
+  "status": "demo implemented; container runtime verification pending",
+  "implemented": [
+    "React upload/query/evidence/trace/trust interface",
+    "Six-layer production pipeline",
+    "Registry routing and parameter validation",
+    "Single optical VQA and captioning",
+    "Pretrained grounding with labeled fallback",
+    "Small trained Siamese change VQA with candidate mask",
+    "Synthetic-trained cross-attention optical/SAR fusion",
+    "Deterministic spectral/SAR verification and disagreement retention",
+    "JSON report download",
+    "Real VRSBench LoRA adaptation with before/after evidence",
+    "Public test/eval-split harness and 72 completed samples",
+    "Four scripted demos"
+  ],
+  "verified_tests": 22,
+  "public_evaluation_samples": 72,
+  "public_macro_exact_match": 0.4375,
+  "remaining": [
+    "Docker/WSL installation and actual Compose runtime verification"
+  ],
+  "quality_limits": [
+    "Small-scale training; not production accuracy",
+    "Fusion training synthetic only",
+    "CDVQA training contains only two image pairs",
+    "Evaluation is a bounded sample, not full benchmarks",
+    "Single SAR VQA is a deterministic measurement fallback"
+  ]
+}

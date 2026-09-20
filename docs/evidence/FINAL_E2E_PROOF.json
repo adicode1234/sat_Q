@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-09-12T16:15:44Z",
+  "rows": [
+    {
+      "demo": "vqa",
+      "title": "Survey the scene",
+      "job_id": "9adbb7ecbf004308a00cd2bd95308f5a",
+      "status": "complete",
+      "task": "VQA",
+      "specialists": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "trust_score": 0.5218,
+      "decision": "ANSWERED",
+      "events": 13,
+      "error": null
+    },
+    {
+      "demo": "grounding",
+      "title": "Locate surface water",
+      "job_id": "762472ed8c5f40289fdc952fc65c381b",
+      "status": "complete",
+      "task": "GROUNDING",
+      "specialists": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary",
+        "pretrained_grounding_dino_tiny"
+      ],
+      "trust_score": 0.4905,
+      "decision": "ANSWERED",
+      "events": 17,
+      "error": null
+    },
+    {
+      "demo": "change",
+      "title": "Inspect change over time",
+      "job_id": "4707463ed36843d69c4017e9b982aea1",
+      "status": "complete",
+      "task": "CHANGE_VQA",
+      "specialists": [
+        "cdvqa_tiny_siamese_vqa + deterministic_candidate_mask"
+      ],
+      "trust_score": 0.3887,
+      "decision": "ANSWERED",
+      "events": 13,
+      "error": null
+    },
+    {
+      "demo": "fusion",
+      "title": "Cross-check optical + SAR",
+      "job_id": "b96ac78935b043a9970769b46e26c87a",
+      "status": "complete",
+      "task": "FUSION_ANALYSIS",
+      "specialists": [
+        "adapted_tiny_rgb_mlp + optical_sar_proxy_fusion + synthetic_trained_cross_attention"
+      ],
+      "trust_score": 0.5204,
+      "decision": "ANSWERED",
+      "events": 14,
+      "error": null
+    }
+  ],
+  "all_complete": true
+}

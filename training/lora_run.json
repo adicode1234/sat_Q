@@ -1,0 +1,46 @@
+{
+  "steps": 20,
+  "losses": [
+    7.119968891143799,
+    0.6529954671859741,
+    1.4742579460144043,
+    7.536273002624512,
+    7.898402214050293,
+    2.8190488815307617,
+    4.082749843597412,
+    1.5893959999084473,
+    7.937537670135498,
+    2.0815272331237793,
+    2.0640387535095215,
+    11.443506240844727,
+    6.90350866317749,
+    5.286830902099609,
+    5.715331077575684,
+    3.5425336360931396,
+    6.429533958435059,
+    0.6292290687561035,
+    1.3213157653808594,
+    7.41284704208374
+  ],
+  "manifest": "data/vrsbench/train.jsonl",
+  "training_rows_available": 16,
+  "training_rows_used": 16,
+  "source": "VRSBench official train annotations and images",
+  "method": "ViLT query/value attention LoRA, rank 4, alpha 8, seed 42, AdamW 0.0002",
+  "trainable_parameters": 147456,
+  "comparison": {
+    "image": "/Users/adityarajput/Downloads/satquery-ai/data/vrsbench/P0003_0002.png",
+    "question": "What color are the large vehicles seen in the image?",
+    "reference": "Yellow",
+    "split": "official_eval",
+    "before": {
+      "answer": "yellow",
+      "score": 0.61749267578125
+    },
+    "after": {
+      "answer": "yellow",
+      "score": 0.6220077276229858
+    }
+  },
+  "limitations": "Small CPU adaptation run demonstrates real weight updates, not benchmark-quality generalization. The held-out example is not used for training."
+}

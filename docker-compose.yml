@@ -1,0 +1,40 @@
+x-specialist: &specialist
+  build: .
+  command: ["uvicorn", "models.service:app", "--host", "0.0.0.0", "--port", "8000"]
+  volumes: ["./data:/app/data:ro", "./models/checkpoints:/app/models/checkpoints:ro"]
+services:
+  gateway:
+    build: .
+    ports: ["127.0.0.1:8000:8000"]
+    environment:
+      SATQUERY_SERVING: http
+      SATQUERY_MAX_UPLOADS: ${SATQUERY_MAX_UPLOADS:-20}
+      SATQUERY_MAX_UPLOAD_MB: ${SATQUERY_MAX_UPLOAD_MB:-128}
+      SATQUERY_MAX_QUERY_CHARS: ${SATQUERY_MAX_QUERY_CHARS:-8000}
+      SATQUERY_MAX_MULTIDATE: ${SATQUERY_MAX_MULTIDATE:-20}
+      SATQUERY_MAX_DECODED_MB: ${SATQUERY_MAX_DECODED_MB:-1024}
+      SATQUERY_AUTO_REPROJECT: ${SATQUERY_AUTO_REPROJECT:-1}
+      SATQUERY_AUTO_RESAMPLE: ${SATQUERY_AUTO_RESAMPLE:-1}
+      SATQUERY_AUTO_BAND_REORDER: ${SATQUERY_AUTO_BAND_REORDER:-1}
+      SATQUERY_AUTO_COREGISTER: ${SATQUERY_AUTO_COREGISTER:-1}
+    volumes: ["./reports:/app/reports", "./data:/app/data", "./models/checkpoints:/app/models/checkpoints:ro"]
+    depends_on: [vqa, grounding, change, fusion]
+  vqa:
+    <<: *specialist
+    environment: {TOOL_MODULE: models.vqa_caption.model}
+  grounding:
+    <<: *specialist
+    environment: {TOOL_MODULE: models.grounding.model}
+  change:
+    <<: *specialist
+    environment: {TOOL_MODULE: models.change_vqa.model}
+  fusion:
+    <<: *specialist
+    environment: {TOOL_MODULE: models.fusion_optical_sar.model}
+  change-mask:
+    <<: *specialist
+    command: ["uvicorn", "models.change_mask.service:app", "--host", "0.0.0.0", "--port", "8000"]
+  frontend:
+    build: ./frontend
+    ports: ["127.0.0.1:8080:80"]
+    depends_on: [gateway]

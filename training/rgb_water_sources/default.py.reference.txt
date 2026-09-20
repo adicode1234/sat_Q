@@ -1,0 +1,360 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import os
+from yacs.config import CfgNode as CN
+
+_C = CN()
+
+# name for config
+_C.CHECKNAME = ''
+
+# base directory for data/results
+_C.BASEDIR = ''
+
+# gpu('s) to use
+_C.GPUS = [0]
+
+# number of workers for dataloader, increase until gpu utilization is at 100% at all times
+_C.WORKERS = 6
+
+# common params for NETWORK
+_C.MODEL = CN()
+# model to use
+_C.MODEL.NAME = 'manet'
+# backbone to use (only for deeplab and manet, see https://smp.readthedocs.io/en/latest/encoders.html for manet and )
+_C.MODEL.BACKBONE = 'timm-regnety_040'
+# _C.MODEL.EXTRA = CN(new_allowed=True)  # i'll leave this line here to show how to add new nodes that are mutable.
+
+# VISUAL TRANSFORMER PARAMETERS
+_C.MODEL.PATCH_SIZE = 16
+_C.MODEL.EMB_DIM = 768  # 768 for ViT Base, 1024 for ViT large
+_C.MODEL.RESAMPLE_DIM = 256
+_C.MODEL.READ = "projection"
+_C.MODEL.NHEAD = 4
+_C.MODEL.HOOKS = [2, 5, 8, 11]  # [5,11,17,23] for ViT large
+_C.MODEL.MODEL_TIMM = "vit_base_patch16_384"
+_C.MODEL.MODEL_BASE_WEIGHTS = ""  # default weights for initializing a new model
+
+_C.LOSS = CN()
+# loss type, ce= crossentropy, see BGTsegmentation class for options
+_C.LOSS.LOSS_TYPE = 'dice'
+
+# DATASET related params
+_C.DATASET = CN()
+# (combination of) input source(s) to use
+_C.DATASET.INPUT_STACK = 'RGB'
+# number of input channels for model ie. rgb ->3
+_C.DATASET.N_INPUTCHANNELS = 3 
+# number of forward passes in an epoch, epochs cannot be calculated by
+# iterating over the dataset so are set at a fixed length
+_C.DATASET.EPOCH_LENGTH = 2048
+# size in pixels of the height and width of the base 1x1km block
+_C.DATASET.BLOCK_SIZE = 10000
+# used for training the cascaded model, if block size is different from default, create a subgroup in the h5dataset
+_C.DATASET.DEFAULT_BLOCK_SIZE = 10000 
+# number of non background classes, will be overwritten by in update_configs by len(DATASET.CLASSES) + 1
+_C.DATASET.NUM_CLASSES = 2 
+# names of non background classes, used to calculate num_classes
+_C.DATASET.CLASSES = ['waterdeel', 'pand'] 
+# determines what source to use as base if multiple are present, for example ground truth and rgb.
+# will use the given name as base and will ignore tiles from other sources that are not present in 
+# the base source. Useful for when one of the sources is incomplete.
+_C.DATASET.KEYS_FROM = 'rgb'
+# how many tiles to segment as validation during the validation stage of training. 
+# usefull if you want to quickly debug validation or if validation is taking longer but you want
+# to keep the validation_tiles list intact.
+_C.DATASET.MAX_VAL_TILES = 5
+# colors to use for classes. Will take as many classes as needed from the list. if you have more
+# than 7 classes, add more colors
+_C.DATASET.COLORMAP = ['steelblue', 'salmon', "grey", 'forestgreen', 'goldenrod', 'mediumpurple', 'orchid']  # equal to classes (dont use black as it is reserved for background)
+
+_C.DATASET.DATA_SOURCE_FOLDERS = CN()
+
+# standard directory names for each input type, will be parsed to basedir + input_type_dir
+_C.DATASET.DATA_SOURCE_FOLDERS.RGB_DIR = "rgb"
+_C.DATASET.DATA_SOURCE_FOLDERS.CIR_DIR = "cir"
+_C.DATASET.DATA_SOURCE_FOLDERS.DSM_DIR = "dsm"
+_C.DATASET.DATA_SOURCE_FOLDERS.DTM_DIR = "dtm"
+_C.DATASET.DATA_SOURCE_FOLDERS.DIFFERENCE_MAP_DIR = "difference_map"
+_C.DATASET.DATA_SOURCE_FOLDERS.PARSED_DIR = "parsed"
+_C.DATASET.DATA_SOURCE_FOLDERS.SEGMENTED_DIR = "segmented"
+_C.DATASET.DATA_SOURCE_FOLDERS.BGT_DIR = "ground_truth"
+
+# used to set absolute paths to data, 
+# in some cases it is not possible to have all data in the 
+# dataset folder, in that case set the custom paths with these parameters, give the full path to the folder containing the h5/tiff files.
+_C.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_RGB_DIR = ""
+_C.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_CIR_DIR = ""
+_C.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_DSM_DIR = ""
+_C.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_DTM_DIR = ""
+_C.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_PARSED_DIR = ""
+_C.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_SEGMENTED_DIR = ""
+_C.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_BGT_DIR = ""
+
+# training
+_C.TRAIN = CN()
+_C.TRAIN.IMAGE_SIZE = [384, 384]  # width, height
+# get data from geotif instead of hdf5 file for training
+_C.TRAIN.DATA_FROM_GEOTIFFS = True 
+# which source will be used to determine the content of the window for each patch
+# if you use multiple sources with different sizes, REALWORLD_FROM determines what source
+# to choose as a base, the realworld coordinates from that patch will then be used to 
+# get patches from the other sources.
+_C.TRAIN.REALWORLD_FROM = 'rgb'
+# large 1x1km tiles are too big to be displayed in most logging environments (such as a webbrowser with weights and biases open)
+# the validation tiles are resized to allow for viewing.
+_C.TRAIN.VALIDATION_TILE_RESIZING = True
+_C.TRAIN.VALIDATION_TILE_RESIZING_RES = 4000
+
+# augmentations
+_C.TRAIN.HEIGHT_AUG = False
+_C.TRAIN.PATCH_CLASS_FILTER = False
+_C.TRAIN.PATCH_CLASS_FILTER_CLASSES = [1, 2]
+_C.TRAIN.PATCH_CLASS_FILTER_WEIGHTS = [0.7, 0.5]
+
+# optimizer params
+_C.TRAIN.ACCUMULATE_GRAD_BATCHES = 2
+_C.TRAIN.LR = 0.0001
+_C.TRAIN.LR_BACKBONE = 0.00001
+
+_C.TRAIN.OPTIMIZER = 'adam'
+_C.TRAIN.EPSILON = 1e-08
+_C.TRAIN.BETAS = (0.9, 0.999)
+_C.TRAIN.AMSGRAD = False
+_C.TRAIN.MOMENTUM = 0.9
+_C.TRAIN.WEIGHT_DECAY = 0.0001
+_C.TRAIN.NESTEROV = False
+
+# scheduler parameters
+_C.TRAIN.PATIENCE = 3
+_C.TRAIN.FACTOR = 0.1
+
+# random seed for training
+_C.TRAIN.SEED = 42
+# total amounts of epochs to train for
+_C.TRAIN.EPOCHS = 200
+# path to the pt lightning module to resume, should refer to the .ckpt file. example:
+# "/fryslan_full/wandb/run-20220630_194629-wocpliwv/files/models/transf_seg-epoch=21-dice=0.95.ckpt"
+_C.TRAIN.RESUME = ''
+
+# batch size for training
+_C.TRAIN.BATCH_SIZE = 8
+# only do validation (useful for debugging)
+_C.TRAIN.VALIDATION_ONLY = False
+# only do training (if validation takes too long for example, or you don't need it)
+_C.TRAIN.NO_VALIDATION = False
+
+# logging parameters
+# how frequently to log the images during training (defined as IMAGE_LOG_FREQ/epoch)
+_C.TRAIN.IMAGE_LOG_FREQ = 10
+
+# testing (validation)
+_C.TEST = CN()
+_C.TEST.BATCH_SIZE = 8
+
+# inference (for segmentation)
+_C.INFERENCE = CN()
+_C.INFERENCE.BATCH_SIZE = 8
+
+# model file that is used by segment.py
+_C.INFERENCE.MODEL_PATH = ''
+
+# internal class names to bgt class names
+_C.MAPPINGS = CN()
+_C.MAPPINGS.CLASS_TO_CLASSIDX = CN()
+_C.MAPPINGS.CLASS_TO_CLASSIDX.BACKGROUND = 0
+_C.MAPPINGS.CLASS_TO_CLASSIDX.WATERDEEL = 1
+_C.MAPPINGS.CLASS_TO_CLASSIDX.PAND = 2
+_C.MAPPINGS.CLASS_TO_CLASSIDX.WEGDEEL = 3
+_C.MAPPINGS.CLASS_TO_CLASSIDX.OVERBRUGGINGSDEEL = 4
+_C.MAPPINGS.CLASS_TO_CLASSIDX.VEGETATIE = 5
+
+_C.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS = CN()
+_C.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS.CIR = ["cir"]
+_C.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS.RGB = ["rgb"]
+_C.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS.RGB_FEAT2000 = ["rgb", "resized_2000/feature_map_upscaled"]
+_C.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS.DTM_DSM = ["dtm", "dsm"]
+_C.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS.RGB_NIR = ["rgb", "cir"]
+_C.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS.RGB_NIR_DTM_DSM = ["rgb", "cir", "ctm", "dsm"]
+_C.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS.RGB_DTM_DSM = ["rgb", "dtm", "dsm"]
+
+# placeholders will be filled in _make_inverse_dicts function
+_C.MAPPINGS.CLASSIDX_TO_CLASSNAME = CN()
+
+# VALIDATION KEYS
+# look for these keys in dataset to use as validation keys during training.
+# contains many different keys but will ignore all the keys that are not in the dataset,
+# additionally only a limited amount (MAX_VAL_TILES) keys are select for validation.
+_C.DATASET.VALIDATION_KEYS = [
+    '107_495',
+    '151_411',
+    "87_413",
+    "89_393",
+    "115_407",
+    "135_407",
+    "135_415",
+    "201_505",
+    "94_467",
+    "115_402",  # tmp logtile for bridge debugging
+    "73_446",
+    "90_439",
+    "68_445",
+    "160_455",
+    "158_441",
+    "244_494",
+    "114_518",
+    "114_522",
+    "117_517",
+    "116_518",
+    "122_479",
+    "125_478",
+    "126_483",
+    "92_424",  # zeeland city
+    "30_396",  # zeeland fields + water and one farm
+    "65_412",  # zeeland sea + island
+    "61_421",  # zeeland forest
+    "173_565",  # frysland polder
+    "174_560",  # frysland city + water + forest
+    "176_582",  # frysland polder + large brown area
+    "177_560",  # frysland large body of moving water
+    "153_424",  # aa en maas pilot area 1 validation key grey river
+    "162_424",  # aa en maas pilot area 1 validation key polder + rwzi
+    "162_416",  # aa en maas pilot area 1 validation key water dark + forest + city
+    "161_424",  # aa en maas pilot area 1 validation key sandy water 
+    "162_417",  # aa en maas pilot area 1 validation key city + forest + water
+    "192_569", # frysland pilot area 1 river with reflection
+    "192_572", # frysland pilot area 1 houses forest and water
+    "187_567", # frysland pilot area 1 lake
+    "185_567", # frysland pilot area 1 different colored fields
+# with meter format key names
+    "192000_569000", # frysland pilot area 1 river with reflection
+    "192000_572000", # frysland pilot area 1 houses forest and water
+    "187000_567000", # frysland pilot area 1 lake
+    "185000_567000", # frysland pilot area 1 different colored fields
+    "186_563", # logging tile for fryslan
+]
+
+def _make_inverse_dicts(cfg):
+    """Make inverse dicts from classes, is called after command line arguments 
+    are parsed through the config.
+
+    Args:
+        cfg (yacs.cfg.CfgNode): config to update.
+
+    Returns:
+        yacs.cfg.CfgNode: updated cfg.
+    """
+    for key, value in cfg.MAPPINGS.CLASS_TO_CLASSIDX.items():
+        cfg.MAPPINGS.CLASSIDX_TO_CLASSNAME[value] = key
+    return cfg
+
+def _make_alternate_key_versions(key_list):
+    """ensure both km and m version of keys are present in keylist. 
+
+    Args:
+        key_list (list): list of key strings 
+
+    Returns:
+        list: list of key strings with both versions of each key.
+    """
+    key_list_adjusted = []
+    splits = [key.split() for key in key_list]
+    
+    for [x, y] in splits:
+        if len(x) <= 3:
+            alternate_key = f"{x}000_{y}000"
+        else:
+            alternate_key = f"{int(x/1000)}_{int(y/1000)}"
+        key_list_adjusted.append(alternate_key)
+    key_list_adjusted = list(set(key_list_adjusted + key_list))
+    return key_list_adjusted
+    
+
+
+def update_config(cfg, args, freeze=True):
+    cfg.defrost()
+    cfg.merge_from_file(args.cfg)
+    cfg.merge_from_list(args.opts)
+    cfg = _make_inverse_dicts(cfg)
+    cfg.DATASET.CLASSES = [c.lower() for c in cfg.DATASET.CLASSES]  # rest of the code expects uppercase classnames
+    cfg.DATASET.NUM_CLASSES = len(cfg.DATASET.CLASSES) + 1  # the classes in the dataset + the background class
+
+    # get  block size from default if it is None
+    if not cfg.DATASET.BLOCK_SIZE:
+        cfg.DATASET.BLOCK_SIZE = cfg.DATASET.DEFAULT_BLOCK_SIZE
+    
+    # transform relative data paths to absolute datapaths
+    cfg.DATASET.DATA_SOURCE_FOLDERS.RGB_DIR = os.path.join(cfg.BASEDIR, cfg.DATASET.DATA_SOURCE_FOLDERS.RGB_DIR)
+    cfg.DATASET.DATA_SOURCE_FOLDERS.CIR_DIR = os.path.join(cfg.BASEDIR, cfg.DATASET.DATA_SOURCE_FOLDERS.CIR_DIR)
+    cfg.DATASET.DATA_SOURCE_FOLDERS.DSM_DIR = os.path.join(cfg.BASEDIR, cfg.DATASET.DATA_SOURCE_FOLDERS.DSM_DIR)
+    cfg.DATASET.DATA_SOURCE_FOLDERS.DTM_DIR = os.path.join(cfg.BASEDIR, cfg.DATASET.DATA_SOURCE_FOLDERS.DTM_DIR)
+    cfg.DATASET.DATA_SOURCE_FOLDERS.PARSED_DIR = os.path.join(cfg.BASEDIR, cfg.DATASET.DATA_SOURCE_FOLDERS.PARSED_DIR)
+    cfg.DATASET.DATA_SOURCE_FOLDERS.SEGMENTED_DIR = os.path.join(cfg.BASEDIR, cfg.DATASET.DATA_SOURCE_FOLDERS.SEGMENTED_DIR)
+    cfg.DATASET.DATA_SOURCE_FOLDERS.BGT_DIR = os.path.join(cfg.BASEDIR, cfg.DATASET.DATA_SOURCE_FOLDERS.BGT_DIR)
+
+    # replace data_source_folders if custom path is given.
+    if cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_RGB_DIR != "":
+        cfg.DATASET.DATA_SOURCE_FOLDERS.RGB_DIR = cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_RGB_DIR
+    if cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_CIR_DIR != "":
+        cfg.DATASET.DATA_SOURCE_FOLDERS.CIR_DIR = cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_CIR_DIR
+    if cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_DSM_DIR != "":
+        cfg.DATASET.DATA_SOURCE_FOLDERS.DSM_DIR = cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_DSM_DIR
+    if cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_DTM_DIR != "":
+        cfg.DATASET.DATA_SOURCE_FOLDERS.DTM_DIR = cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_DTM_DIR
+    if cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_PARSED_DIR != "":
+        cfg.DATASET.DATA_SOURCE_FOLDERS.PARSED_DIR = cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_PARSED_DIR
+    if cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_SEGMENTED_DIR != "":
+        cfg.DATASET.DATA_SOURCE_FOLDERS.SEGMENTED_DIR = cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_SEGMENTED_DIR
+    if cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_BGT_DIR != "":
+        cfg.DATASET.DATA_SOURCE_FOLDERS.BGT_DIR = cfg.DATASET.DATA_SOURCE_FOLDERS.CUSTOM_BGT_DIR
+
+    # set keys_from parameter
+    if cfg.DATASET.KEYS_FROM.lower() == 'rgb':
+        cfg.DATASET.KEYS_FROM = cfg.DATASET.DATA_SOURCE_FOLDERS.RGB_DIR
+    
+    if cfg.DATASET.KEYS_FROM.lower()  == 'dsm':
+        cfg.DATASET.KEYS_FROM = cfg.DATASET.DATA_SOURCE_FOLDERS.DSM_DIR
+
+    if cfg.DATASET.KEYS_FROM.lower()  == 'dtm':
+        cfg.DATASET.KEYS_FROM = cfg.DATASET.DATA_SOURCE_FOLDERS.DTM_DIR
+
+    if cfg.DATASET.KEYS_FROM.lower()  == 'dsm':
+        cfg.DATASET.KEYS_FROM = cfg.DATASET.DATA_SOURCE_FOLDERS.CIR_DIR
+
+    key_subset = []
+    try:
+        if args.process_subset:
+            # define min and max x/y coordinates here in RD coordinates (1=1km scale)
+            x_min, x_max = 185, 195
+            y_min, y_max = 564, 574
+
+            x_list = list(range(x_min, x_max))
+            y_list = list(range(y_min, y_max))
+            for x in x_list:
+                for y in y_list:
+                    key_subset.append(f"{x}_{y}")
+
+    except AttributeError:
+        pass
+        # print("no process_subset in arguments, defaulting to KEY_SUBSET = []")
+
+    cfg.KEY_SUBSET = key_subset
+
+    if freeze:
+        cfg.freeze()
+    return cfg
+
+
+def get_cfg_defaults():
+    """Get a yacs CfgNode object with default values for my_project."""
+    # Return a clone so that the defaults will not be altered
+    # This is for the "local variable" use pattern
+    return _C.clone()
+
+
+if __name__ == '__main__':
+    import sys
+    with open(sys.argv[1], 'w') as f:
+        print(_C, file=f)

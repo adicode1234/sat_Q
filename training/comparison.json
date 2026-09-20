@@ -1,0 +1,17 @@
+{
+  "query": "What land cover is visible in this image?",
+  "image": "data/demo/optical_before.tif",
+  "scope": "synthetic demo, not real benchmark improvement",
+  "base": {
+    "water": 0.000274658203125,
+    "vegetation": 0.0037841796875,
+    "built_up": 0.775299072265625,
+    "other": 0.22064208984375
+  },
+  "adapter": {
+    "water": 0.1299896240234375,
+    "vegetation": 0.5389251708984375,
+    "built_up": 0.2302093505859375,
+    "other": 0.1008758544921875
+  }
+}

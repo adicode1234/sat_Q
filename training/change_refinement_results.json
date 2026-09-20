@@ -1,0 +1,8 @@
+{
+  "before_validation_accuracy": 0.9111111111111111,
+  "after_validation_accuracy": 0.7555555555555555,
+  "steps": 120,
+  "unique_pairs": 2,
+  "promoted": false,
+  "reason": "Only two labelled image pairs exist; no independent, representative validation population. Candidate is not deployed. Original weights also saw these pairs historically."
+}

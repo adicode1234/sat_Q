@@ -1,0 +1,24 @@
+[
+  {
+    "dataset": "VRSBench",
+    "status": "downloaded",
+    "count": 4
+  },
+  {
+    "dataset": "CDVQA",
+    "status": "downloaded",
+    "count": 4
+  },
+  {
+    "dataset": "RSVQA",
+    "status": "downloaded",
+    "count": 10004,
+    "source": "https://zenodo.org/records/6344334",
+    "split": "official_test",
+    "available_questions": 10004,
+    "selected_questions": 10004,
+    "selected_images": 100,
+    "selection": "deterministic round-robin across active test images, offset question index by image order",
+    "full_split": true
+  }
+]

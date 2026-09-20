@@ -1,0 +1,19 @@
+{
+  "dataset": "SEN12MS-CR",
+  "mirror": "Hermanni/sen12mscr",
+  "original_source": "mediaTUM 1554803",
+  "season": "spring",
+  "scene": "1",
+  "patch": "p100",
+  "s1_shape": [
+    2,
+    256,
+    256
+  ],
+  "s2_shape": [
+    13,
+    256,
+    256
+  ],
+  "note": "Real Sentinel-1/Sentinel-2 paired sample. Mirror row does not expose original CRS/geotransform."
+}

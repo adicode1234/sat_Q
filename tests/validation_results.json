@@ -1,0 +1,25 @@
+{
+  "tests": 22,
+  "status": "passed",
+  "configurations": [
+    "lightweight CPU mode",
+    "LoRA-enabled VQA mode"
+  ],
+  "frontend_build": "passed",
+  "browser_checks": [
+    "Grounding demo: live trace, bounding box, separate confidence values and report link",
+    "Temporal demo: before/after image switch and candidate mask",
+    "Cross-modal demo: explicit disagreement and discounted trust",
+    "VQA demo: real LoRA-adapted model mode visible, unverified suggestion flagged",
+    "WebMCP read/start tool registration and invalid demo rejection",
+    "Resumed build: trained CDVQA Siamese model with separately verified candidate change mask"
+  ],
+  "docker_runtime": "Not verified. Installation authorized; Windows elevation launch failed with 0xc0000142. User administrator step pending.",
+  "official_rsvqa_test": "64 official test samples across 64 images; all completed",
+  "live_url": "http://127.0.0.1:8000",
+  "real_http_dispatch": "all four scenarios passed using four independent services",
+  "trained_change_vqa": "48 CDVQA training questions, two unique image pairs; model active",
+  "latest_regression": "22 passed; fresh workspace temporary directory resolves prior permission error",
+  "trained_grounding": "Grounding DINO tiny checkpoint inference passed; detection quality not validated",
+  "trained_fusion": "Synthetic-trained cross-attention; SAR perturbation changes predictions; verifier sees fused claims"
+}

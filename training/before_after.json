@@ -1,0 +1,30 @@
+{
+  "mode": "SYNTHETIC SMALL-SCALE TRAINING, NOT BENCHMARK ACCURACY",
+  "architecture": "7 RGB features \u2192 tanh(16) \u2192 4 land-cover classes",
+  "training_samples": 8192,
+  "synthetic_scenes": 16,
+  "steps": 300,
+  "seed": 12,
+  "query": "What land cover is visible in this image?",
+  "before": {
+    "accuracy_on_synthetic_holdout": 0.3182508680555556,
+    "answer": {
+      "water": 0.00010850694444444444,
+      "vegetation": 0.0028211805555555555,
+      "built_up": 0.7758246527777778,
+      "other": 0.2212456597222222
+    }
+  },
+  "after": {
+    "accuracy_on_synthetic_holdout": 1.0,
+    "answer": {
+      "water": 0.1304253472222222,
+      "vegetation": 0.5396050347222222,
+      "built_up": 0.2300347222222222,
+      "other": 0.09993489583333333
+    }
+  },
+  "loss_first": 1.394662386071784,
+  "loss_last": 0.02863176769052978,
+  "limitations": "Same synthetic class palette in train and holdout. Does not establish generalization to real satellite imagery. No LoRA run is claimed."
+}

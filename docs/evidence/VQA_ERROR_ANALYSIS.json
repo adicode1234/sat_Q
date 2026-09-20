@@ -1,0 +1,886 @@
+{
+  "total_samples": 72,
+  "wrong_or_nonexact": 48,
+  "wrong_by_dataset": {
+    "VRSBench": 3,
+    "CDVQA": 1,
+    "RSVQA": 44
+  },
+  "total_by_dataset": {
+    "VRSBench": 4,
+    "CDVQA": 4,
+    "RSVQA": 64
+  },
+  "top_expected_predicted_pairs": [
+    {
+      "expected": "no",
+      "predicted": "yes",
+      "count": 15
+    },
+    {
+      "expected": "yes",
+      "predicted": "no",
+      "count": 14
+    },
+    {
+      "expected": "0",
+      "predicted": "4",
+      "count": 2
+    },
+    {
+      "expected": "Yellow",
+      "predicted": "white",
+      "count": 1
+    },
+    {
+      "expected": "2",
+      "predicted": "3",
+      "count": 1
+    },
+    {
+      "expected": "North-South",
+      "predicted": "straight",
+      "count": 1
+    },
+    {
+      "expected": "urban",
+      "predicted": "rural",
+      "count": 1
+    },
+    {
+      "expected": "2",
+      "predicted": "1",
+      "count": 1
+    },
+    {
+      "expected": "3",
+      "predicted": "0",
+      "count": 1
+    },
+    {
+      "expected": "138",
+      "predicted": "2",
+      "count": 1
+    },
+    {
+      "expected": "850",
+      "predicted": "3",
+      "count": 1
+    },
+    {
+      "expected": "348",
+      "predicted": "0",
+      "count": 1
+    },
+    {
+      "expected": "0",
+      "predicted": "1",
+      "count": 1
+    },
+    {
+      "expected": "0",
+      "predicted": "12",
+      "count": 1
+    },
+    {
+      "expected": "87",
+      "predicted": "3",
+      "count": 1
+    },
+    {
+      "expected": "0",
+      "predicted": "lot",
+      "count": 1
+    },
+    {
+      "expected": "0",
+      "predicted": "2",
+      "count": 1
+    },
+    {
+      "expected": "3049",
+      "predicted": "3",
+      "count": 1
+    },
+    {
+      "expected": "6",
+      "predicted": "3",
+      "count": 1
+    },
+    {
+      "expected": "62",
+      "predicted": "3",
+      "count": 1
+    }
+  ],
+  "wrong": [
+    {
+      "dataset": "VRSBench",
+      "id": "0",
+      "query": null,
+      "expected": "Yellow",
+      "predicted": "white",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "VRSBench",
+      "id": "1",
+      "query": null,
+      "expected": "2",
+      "predicted": "3",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "VRSBench",
+      "id": "3",
+      "query": null,
+      "expected": "North-South",
+      "predicted": "straight",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "CDVQA",
+      "id": "cdvqa-test-00000002",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "cdvqa_tiny_siamese_vqa + deterministic_candidate_mask"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "23208",
+      "query": null,
+      "expected": "urban",
+      "predicted": "rural",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "23309",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "23410",
+      "query": null,
+      "expected": "2",
+      "predicted": "1",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "23511",
+      "query": null,
+      "expected": "3",
+      "predicted": "0",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "23612",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "23713",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "24016",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "24117",
+      "query": null,
+      "expected": "138",
+      "predicted": "2",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "24218",
+      "query": null,
+      "expected": "850",
+      "predicted": "3",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "24319",
+      "query": null,
+      "expected": "348",
+      "predicted": "0",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "24420",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "24723",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "24925",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "25127",
+      "query": null,
+      "expected": "0",
+      "predicted": "4",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "25228",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "25329",
+      "query": null,
+      "expected": "0",
+      "predicted": "1",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "25430",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "25531",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "25632",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "25834",
+      "query": null,
+      "expected": "0",
+      "predicted": "12",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "26137",
+      "query": null,
+      "expected": "87",
+      "predicted": "3",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "26339",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "26440",
+      "query": null,
+      "expected": "0",
+      "predicted": "lot",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "26541",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "26642",
+      "query": null,
+      "expected": "0",
+      "predicted": "2",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "26743",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "26844",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "26945",
+      "query": null,
+      "expected": "3049",
+      "predicted": "3",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "27147",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "27551",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "27652",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "27854",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "27955",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "28359",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "28561",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "28662",
+      "query": null,
+      "expected": "0",
+      "predicted": "4",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "28764",
+      "query": null,
+      "expected": "6",
+      "predicted": "3",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "28865",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "28966",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "29067",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "29169",
+      "query": null,
+      "expected": "62",
+      "predicted": "3",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "29372",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "29473",
+      "query": null,
+      "expected": "no",
+      "predicted": "yes",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    },
+    {
+      "dataset": "RSVQA",
+      "id": "29574",
+      "query": null,
+      "expected": "yes",
+      "predicted": "no",
+      "model_modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "decision": {
+        "status": "LOW_TRUST",
+        "code": "LOW_CONFIDENCE",
+        "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+        "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+      }
+    }
+  ]
+}

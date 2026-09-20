@@ -1,0 +1,445 @@
+import glob
+import os
+import random
+from pathlib import Path
+
+import numpy as np
+import rasterio
+import torch
+from h5py import File
+from rasterio.windows import Window
+
+from nlveranderdetectie.segmentation import errors, utils
+
+class BGTSEG(torch.utils.data.Dataset):
+    """BGT segmentation dataset
+    """
+
+    def __init__(self, cfg, split):
+        """Initialize a bgt segmentation dataset
+
+        Args:
+            cfg (yacs.config.CfgNode): config that contains the configurations of where and how to load the data, as well as how to pass it to the model
+            split (str): whether the dataset is going to be used for training or testing.
+        """
+        super().__init__()
+        self.cfg = cfg
+        self.split = split
+
+        required_sources = cfg.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS[cfg.DATASET.INPUT_STACK]
+        if cfg.DATASET.BLOCK_SIZE != cfg.DATASET.DEFAULT_BLOCK_SIZE:
+            required_sources = [f"resized_{cfg.DATASET.BLOCK_SIZE}/{s}" for s in required_sources]
+        required_sources = [s.lower() for s in required_sources]
+        if "dtm" in required_sources:
+            required_sources = required_sources + ["dtm_mean", "dtm_median"]
+
+        # add slashed version of all sources so that checking works,
+        # for example say we are looking for the rgb key, then both 'rgb' and '/rgb'
+        # are correct. This check is needed because the way groups are used in this
+        # program sometimes gives the slashed and sometimes the unslashed version
+        self.required_sources = [
+            f"/{s}" for s in required_sources if s[0] != '/'] + required_sources
+
+        self.data_paths_dict = self.get_datapaths_dict(cfg, split)
+
+    def get_datapaths_dict(self, cfg, split):
+        """
+        Go through the dataset directories and retrieve the location of all necessary files.
+        Add those files to self.data_paths_dict in the appropriate locations.
+        """
+        # TODO: add correct label key to required sources.
+        if split == 'val':
+            # list contains validation tiles for various of the areas that are used for testing, tiles that are not
+            # found in the base directory are removed later so all them can be added in this line.
+            h5_files = [os.path.join(cfg.DATASET.KEYS_FROM, key + ".h5")
+                        for key in cfg.DATASET.VALIDATION_KEYS]
+            tif_files = [os.path.join(cfg.DATASET.KEYS_FROM, key + ".tif")
+                         for key in cfg.DATASET.VALIDATION_KEYS]
+
+            if len(tif_files) >= len(h5_files):
+                tile_files = tif_files
+            else:
+                tile_files = h5_files
+            print(f"found {len(tile_files)} potential sources for split <{split}>")
+        elif split == 'train':
+            print(rf"{cfg.DATASET.KEYS_FROM}\*.tif")
+            h5_files = list(Path(cfg.DATASET.KEYS_FROM).glob("*.h5"))
+            tif_files = list(Path(cfg.DATASET.KEYS_FROM).glob("*.tif"))
+
+            # folder should only have h5 or tiff files so one of these two should be empty
+            assert ((len(h5_files) + len(tif_files)) == len(h5_files)) or ((len(h5_files) +
+                                                                            len(tif_files)) == len(tif_files)), "ERROR: folder contains mixed hdf5 and geotif files"
+            tile_files = h5_files + tif_files
+            print(f"found {len(tile_files)} potential sources for split <{split}>")
+        else:
+            raise NotImplementedError(f"split: <{split}> not implemented")
+
+        block_ids = [os.path.basename(tile_file).split(".")[0] for tile_file in tile_files]
+        data_dict = {}
+
+        for tile_path, key in zip(tile_files, block_ids):
+            if os.path.isfile(tile_path):
+                if ".h5" in str(tile_path):
+                    # print(f"reading key: {key}")
+                    with File(tile_path, 'r') as f:
+                        # tile_sources = [s.upper() for s in f.keys()]
+                        missing_sources = [s for s in self.required_sources if s not in f.keys()]
+                        # print("-"*50)
+                        if not (len(missing_sources) > 0):
+                            data_dict[key] = {}
+                            data_dict[key]['parsed'] = tile_path
+                        # else:
+                            # print("required", self.required_sources)
+                            # print("missing: ", missing_sources)
+                            # print("found: ", list(f.keys()))
+                            # print("-" * 50)
+                elif ".tif" in str(tile_path):
+                    # TODO: add read check to datadict to check that the tif file is actually readable
+                    data_dict[key] = {}
+                    data_dict[key]['rgb'] = tile_path
+
+        # Remove the validation tiles to ensure no overfitting risk and true measurement logging
+        if split == 'train':
+            data_dict = {key: data_dict[key]
+                         for key in data_dict if key not in cfg.DATASET.VALIDATION_KEYS}
+
+            print(f"{len(data_dict)} blocks left after checking for required sources")
+        else:
+            print(f"found {len(data_dict)} blocks for validation")
+        return data_dict
+
+    def check_filter(self, target, checklist=None, cutoff=50):
+        """Check if a label patch passes the filter. The filter tries to 
+        force a certain label to be present more in the data than it would naturally occur.
+
+        Args:
+            target (np.array): patch to check the contents of
+            checklist (np.array): probabilities, if these are higher then the weight conditions the patch is passed through even
+            though it does not satisfy the weight conditions
+            cutoff: amount of pixels needed to satisfy the condition that the class is present.
+
+        Returns:
+            bool: bool indicating whether the patch passes the filter or not.
+        """
+        required_classes = self.cfg.TRAIN.PATCH_CLASS_FILTER_CLASSES
+        if type(checklist) != type(np.array):
+            checklist = np.random.rand(len(self.cfg.TRAIN.PATCH_CLASS_FILTER_WEIGHTS))
+
+        checks = [False] * len(required_classes)
+        for i, c in enumerate(required_classes):
+            if np.argwhere(target == c).size >= cutoff or self.cfg.TRAIN.PATCH_CLASS_FILTER_WEIGHTS[i] < checklist[i]:
+                checks[i] = True
+
+        return all(checks)
+
+    def get_random_patch_from_geotiffs(self, resize_patch=True, retry_count=0, checklist=None):
+        """get random patch from geotiff data for training.
+
+        Args:
+            resize_patch (bool, optional): forces resizing of the patch to correct pixel shape, used to resize sources with different scales. Defaults to True.
+            retry_count (int, optional): Amount of retries to do before failing, sampling can fail if required classes are absent. Defaults to 0.
+            checklist: probabilities for applying class weights, initialized in the first call to this function then recursively passed along to prevent 
+            bypassing the conditions by having lots of retries.
+
+        Raises:
+            errors.NoPatchFound: [description]
+
+        Returns:
+            (np.array, np.array, None, None): input patch, label patch, None, None. 
+            None's are because get_item expects dtm median and mean values, which are not given when dtm/dsm are not used.
+        """
+        if retry_count > 5000:
+            # I don't think there are any patches to be found...
+            raise errors.NoPatchFound(
+                "could not find any patch suitable patch after 5000 retries, the dataset is probably incorrect")
+
+        # get random tile
+        key = random.choice(list(self.data_paths_dict.keys()))
+
+        # determine random probablies for this patch, the patch must satisfy these conditions
+        # if the current sample does not, redraw until a good one is found.
+        if self.cfg.TRAIN.PATCH_CLASS_FILTER and type(checklist) != type(np.array):
+            checklist = np.random.rand(len(self.cfg.TRAIN.PATCH_CLASS_FILTER_WEIGHTS))
+
+        patch = None
+        target = None
+        dtm_mean = None
+        dtm_median = None
+
+        # get random patch coordinates, we will resize the other sources to the same real world
+        # coordinates as the rgb layer
+        x = np.random.randint(self.cfg.DATASET.BLOCK_SIZE - self.cfg.TRAIN.IMAGE_SIZE[0])
+        y = np.random.randint(self.cfg.DATASET.BLOCK_SIZE - self.cfg.TRAIN.IMAGE_SIZE[1])
+
+        # get realworld window to query other sources that might have a different resolution
+        real_x = None
+        real_y = None
+        real_x2 = None
+        real_y2 = None
+        # ensure that the source used to the realworld coordinates from is always first in the list
+        # so that the real world coordinates are set.
+        self.required_sources.remove(self.cfg.TRAIN.REALWORLD_FROM.lower())
+        self.required_sources.insert(0, self.cfg.TRAIN.REALWORLD_FROM.lower())
+
+        loaded_sources = {}
+        for source in self.required_sources:
+            if source.lower() == 'rgb':
+                # read rgb
+                rgb_path_tif = os.path.join(
+                    self.cfg.DATASET.DATA_SOURCE_FOLDERS.RGB_DIR, key + ".tif")
+
+                if os.path.exists(rgb_path_tif):
+                    with rasterio.open(rgb_path_tif) as src:
+                        if self.cfg.TRAIN.REALWORLD_FROM == 'rgb':
+                            # use pixel coordinates
+                            win = Window(
+                                x, y, self.cfg.TRAIN.IMAGE_SIZE[0], self.cfg.TRAIN.IMAGE_SIZE[1])
+
+                            # set realworld coordinates of the patch window
+                            real_x, real_y = src.transform * (x, y)
+                            real_x2, real_y2 = src.transform * \
+                                (x+self.cfg.TRAIN.IMAGE_SIZE[0], y+self.cfg.TRAIN.IMAGE_SIZE[1])
+                        else:
+                            # use realworld coordinates for query and resize later
+                            px, py = ~src.transform * (real_x, real_y)
+                            px2, py2 = ~src.transform * (real_x2, real_y2)
+                            win = Window(px, py, px2-px, py2-py)
+
+                        rgb_array = src.read(window=win)
+
+                    rgb_array = np.moveaxis(rgb_array, 0, -1)[:, :, :3]
+                    if resize_patch:
+                        rgb_array = utils.resize_2d(
+                            rgb_array, s1=self.cfg.TRAIN.IMAGE_SIZE[0], s2=self.cfg.TRAIN.IMAGE_SIZE[1])
+
+                    loaded_sources['rgb'] = rgb_array
+
+            if source.lower() == 'cir':
+                # read cir
+                cir_path_tif = os.path.join(
+                    self.cfg.DATASET.DATA_SOURCE_FOLDERS.CIR_DIR, key + ".tif")
+
+                if os.path.exists(cir_path_tif):
+                    with rasterio.open(cir_path_tif) as src:
+                        if self.cfg.TRAIN.REALWORLD_FROM == 'cir':
+                            # use pixel coordinates
+                            win = Window(
+                                x, y, self.cfg.TRAIN.IMAGE_SIZE[0], self.cfg.TRAIN.IMAGE_SIZE[1])
+
+                            # set realworld coordinates of the patch window
+                            real_x, real_y = src.transform * (x, y)
+                            real_x2, real_y2 = src.transform * \
+                                (x+self.cfg.TRAIN.IMAGE_SIZE[0], y+self.cfg.TRAIN.IMAGE_SIZE[1])
+                        else:
+                            # use realworld coordinates for query and resize later
+                            px, py = ~src.transform * (real_x, real_y)
+                            px2, py2 = ~src.transform * (real_x2, real_y2)
+                            win = Window(px, py, px2-px, py2-py)
+
+                        cir_array = src.read(window=win)
+
+                    cir_array = np.moveaxis(cir_array, 0, -1)[:, :, :3]
+                    if resize_patch:
+                        cir_array = utils.resize_2d(
+                            cir_array, s1=self.cfg.TRAIN.IMAGE_SIZE[0], s2=self.cfg.TRAIN.IMAGE_SIZE[1])
+
+                    loaded_sources['cir'] = cir_array
+
+            # we will get the labels from the mask folder here instead of from the parsed hdf5 files.
+            glob_path = os.path.join(self.cfg.DATASET.DATA_SOURCE_FOLDERS.BGT_DIR, key) + "/*.tif"
+            label_paths = glob.glob(glob_path)
+
+            label_dict = {}
+            for label_path in label_paths:
+                with rasterio.open(label_path) as src:
+                    # use realworld coordinates for query and resize later
+                    px, py = ~src.transform * (real_x, real_y)
+                    px2, py2 = ~src.transform * (real_x2, real_y2)
+                    win = Window(px, py, px2-px, py2-py)
+                    mask = src.read(window=win)
+                    # swap to channel last
+                    mask = np.moveaxis(mask, 0, -1)
+
+                mask[mask < 1] = 0
+                mask[mask >= 1] = 1
+                if resize_patch:
+                    mask = utils.resize_2d(
+                        mask, s1=self.cfg.TRAIN.IMAGE_SIZE[0], s2=self.cfg.TRAIN.IMAGE_SIZE[1])
+
+                # get the label name from the filename, also remove the bgt_ part if it exists
+                label_name = os.path.basename(label_path).rsplit('.', 1)[0].replace("bgt_", "")
+                label_dict[label_name] = np.array(mask, dtype=np.float32)
+
+            # no labels were found, try another patch
+            if len(label_dict) == 0:
+                print("found no labels")
+                return self.get_random_patch_from_geotiffs(resize_patch=resize_patch, retry_count=retry_count + 1)
+
+            if source.lower() == 'dsm':
+                raise NotImplementedError("dsm read from tiff is not implemented")
+
+            if source.lower() == 'dtm':
+                raise NotImplementedError("dtm read from tiff is not implemented")
+
+        # stack labels to make target
+        target = np.zeros(
+            (self.cfg.TRAIN.IMAGE_SIZE[0], self.cfg.TRAIN.IMAGE_SIZE[1], self.cfg.DATASET.NUM_CLASSES), dtype=np.float32)
+        for label_name, mask in label_dict.items():
+            if label_name in self.cfg.DATASET.CLASSES:
+                target[:, :, int(
+                    self.cfg.MAPPINGS.CLASS_TO_CLASSIDX[label_name.upper()])] += mask.squeeze()
+
+        target = utils.collapse_onehot(target, axis=-1)
+
+        patch_satisfies = self.check_filter(target, checklist=checklist)
+        if not patch_satisfies:
+            del target  # clear target from memory
+            return self.get_random_patch_from_geotiffs(resize_patch=resize_patch, retry_count=retry_count + 1, checklist=checklist)
+
+        # stack input sources
+        patch
+        if self.cfg.DATASET.INPUT_STACK == "RGB":
+            patch = loaded_sources['rgb']
+        elif self.cfg.DATASET.INPUT_STACK == "CIR":
+            patch = loaded_sources['cir']
+        elif self.cfg.DATASET.INPUT_STACK == "RGB_NIR":
+            rgb_array = loaded_sources['rgb']
+            cir_array = loaded_sources['cir']
+            patch = np.stack((rgb_array[:, :, 0], rgb_array[:, :, 1],
+                             rgb_array[:, :, 2], cir_array[:, :, 0]), axis=-1)
+        else:
+            raise NotImplementedError(f"Datastack {self.cfg.DATASET.INPUT_STACK} not implemented.")
+
+        return patch.copy(), target.copy(), None, None
+
+    def get_random_patch_from_h5(self, retry_count=0):
+        """get random patch from h5 data for training.
+
+        Args:
+            retry_count (int, optional): Amount of retries to do before failing, sampling can fail if required classes are absent. Defaults to 0.
+
+        Raises:
+            errors.NoPatchFound: when no suitable patch is found after the retry count reaches 5000
+            NotImplementedError: when given wrong input stack
+
+        Returns:
+            (np.array, np.array, None, None): input patch, label patch, None, None. 
+            None's are because get_item expects dtm median and mean values, which are not given when dtm/dsm are not used.
+        """
+        if retry_count > 5000:
+            # I don't think there are any patches to be found...
+            raise errors.NoPatchFound(
+                "could not find any patch suitable patch after 5000 retries, the dataset is probably incorrect")
+        # get random tile
+        key = random.choice(list(self.data_paths_dict.keys()))
+
+        patch = None
+        target = None
+        dtm_mean = None
+        dtm_median = None
+
+        additional_group_name = utils.h5dataset_name_from_cfg(self.cfg)
+
+        # open tile and read random patch
+        with File(self.data_paths_dict[key]['parsed'], 'r') as f:
+            x = np.random.randint(self.cfg.DATASET.BLOCK_SIZE - self.cfg.TRAIN.IMAGE_SIZE[0])
+            y = np.random.randint(self.cfg.DATASET.BLOCK_SIZE - self.cfg.TRAIN.IMAGE_SIZE[1])
+
+            if f'{additional_group_name}/label' not in f.keys():
+                return self.get_random_patch_from_h5()
+
+            target = f[f'{additional_group_name}/label'][x:x +
+                                                         self.cfg.TRAIN.IMAGE_SIZE[0], y:y + self.cfg.TRAIN.IMAGE_SIZE[1]]
+            # If targets of H5 file is not merged, merge it.
+            if target.ndim > 2:
+                target = utils.collapse_onehot(target)
+
+            # stop reading this patch and read another one if this one does not pass the filter
+            if self.cfg.TRAIN.PATCH_CLASS_FILTER:
+                patch_satisfies = self.check_filter(target)
+
+                if not patch_satisfies:
+                    del target  # clear target from memory
+                    return self.get_random_patch_from_h5(retry_count=retry_count+1)
+
+            try:
+                if f'{additional_group_name}/rgb' in self.required_sources:
+                    rgb_array = f[f'{additional_group_name}/rgb'][x:x +
+                                                                  self.cfg.TRAIN.IMAGE_SIZE[0], y:y + self.cfg.TRAIN.IMAGE_SIZE[1], :]
+                if f'{additional_group_name}/cir' in self.required_sources:
+                    cir_array = f[f'{additional_group_name}/cir'][x:x +
+                                                                  self.cfg.TRAIN.IMAGE_SIZE[0], y:y + self.cfg.TRAIN.IMAGE_SIZE[1]]
+                if f'{additional_group_name}/dsm' in self.required_sources:
+                    dsm_array = f[f'{additional_group_name}/dsm'][x:x +
+                                                                  self.cfg.TRAIN.IMAGE_SIZE[0], y:y + self.cfg.TRAIN.IMAGE_SIZE[1]]
+                if f'{additional_group_name}/dtm' in self.required_sources:
+                    dtm_array = f[f'{additional_group_name}/dtm'][x:x +
+                                                                  self.cfg.TRAIN.IMAGE_SIZE[0], y:y + self.cfg.TRAIN.IMAGE_SIZE[1]]
+                    dtm_median = f[f'{additional_group_name}/dtm_median'][()]
+                    dtm_mean = f[f'{additional_group_name}/dtm_mean'][()]
+                # additional_group_name should always be '' for this feature because it should only be
+                # used when the block size is the default 10000
+                if "resized_2000/feature_map_upscaled" in self.required_sources:
+                    feat_array = f[f'resized_2000/feature_map_upscaled'][x:x +
+                                                                         self.cfg.TRAIN.IMAGE_SIZE[0], y:y + self.cfg.TRAIN.IMAGE_SIZE[1]]
+
+            except KeyError as e:
+                print(f"keyerror : {e}, try another patch")
+                return self.get_random_patch_from_h5(retry_count=retry_count+1)
+
+        # stack data sources
+        if self.cfg.DATASET.INPUT_STACK == "CIR":
+            patch = cir_array
+        elif self.cfg.DATASET.INPUT_STACK == "RGB":
+            patch = rgb_array
+        elif self.cfg.DATASET.INPUT_STACK == "RGB_FEAT2000":
+            patch = np.concatenate([rgb_array, feat_array], axis=-1)
+        elif self.cfg.DATASET.INPUT_STACK == "DTM_DSM":
+            patch = np.stack((dtm_array, dsm_array), axis=-1)
+        elif self.cfg.DATASET.INPUT_STACK == "RGB_NIR":
+            patch = np.stack((rgb_array[:, :, 0], rgb_array[:, :, 1],
+                             rgb_array[:, :, 2], cir_array[:, :, 0]), axis=-1)
+        elif self.cfg.DATASET.INPUT_STACK == "RGB_DTM_DSM":
+            patch = np.stack((rgb_array[:, :, 0], rgb_array[:, :, 1],
+                             rgb_array[:, :, 2], dtm_array, dsm_array), axis=-1)
+        elif self.cfg.DATASET.INPUT_STACK == "RGB_NIR_DTM_DSM":
+            patch = np.stack((rgb_array[:, :, 0], rgb_array[:, :, 1], rgb_array[:,
+                             :, 2], cir_array[:, :, 0], dtm_array, dsm_array), axis=-1)
+        elif self.cfg.DATASET.INPUT_STACK == "RGB_CIR":
+            patch = np.stack((rgb_array[:, :, 0], rgb_array[:, :, 1], rgb_array[:, :, 2], cir_array[:, :, 0],
+                              cir_array[:, :, 1], cir_array[:, :, 2]), axis=-1)
+        else:
+            raise NotImplementedError(f"Datastack {self.cfg.DATASET.INPUT_STACK} not implemented.")
+
+        return patch.copy(), target.copy(), dtm_mean, dtm_median
+
+    def __len__(self):
+        """n sample draws for each loaded block."""
+        if self.split == "train":
+            return self.cfg.DATASET.EPOCH_LENGTH
+        elif self.split == 'val':
+            return 64
+        else:
+            raise NotImplementedError(f"split {self.split} not implemented")
+
+    def __getitem__(self, batch_idx):
+        """Get random patch from dataset
+
+        Args:
+            batch_idx (int): number of batch
+
+        Returns:
+            dict(torch.Tensor, torch.Tensor): input and target in dict format under the keys 'image' and 'label'
+        """
+        if self.cfg.TRAIN.DATA_FROM_GEOTIFFS:
+            patch, target, dtm_mean, dtm_median = self.get_random_patch_from_geotiffs(
+                resize_patch=True)
+        else:
+            patch, target, dtm_mean, dtm_median = self.get_random_patch_from_h5()
+
+        sample = {'image': patch, 'label': target, "dtm_median": dtm_median, "dtm_mean": dtm_mean}
+
+        # normalize the patch
+        sample = utils.transform_sample(
+            sample, self.cfg.DATASET.INPUT_STACK, self.cfg.TRAIN.HEIGHT_AUG, self.split, dtm_median)
+        return sample

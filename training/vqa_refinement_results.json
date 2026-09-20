@@ -1,0 +1,17 @@
+{
+  "before": {
+    "accuracy": 0.0,
+    "nll": 4.189189553260803,
+    "questions": 4
+  },
+  "candidate": {
+    "accuracy": 0.0,
+    "nll": 4.189189553260803,
+    "questions": 4
+  },
+  "promoted": false,
+  "steps": 64,
+  "train_images": 4,
+  "validation_images": 2,
+  "limitations": "Only 16 questions / 6 images available. Validation images excluded from this refinement but present in historical adapter training; this is not independent accuracy evidence. Public test images never train or select weights."
+}

@@ -1,0 +1,5 @@
+-r requirements.txt
+torch>=2.6
+transformers>=4.49,<6
+peft>=0.14,<1
+requests>=2.32

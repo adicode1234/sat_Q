@@ -1,0 +1,78 @@
+{
+  "generated_at": "2026-09-12T16:16:17Z",
+  "image": "data\\demo\\optical_after.tif",
+  "rows": [
+    {
+      "key": "water_a",
+      "query": "Locate the surface water.",
+      "job_id": "79457c2cf85645f2b0358e38645f8852",
+      "status": "complete",
+      "task": "GROUNDING",
+      "boxes": [
+        [
+          0.0,
+          0.0,
+          256.0,
+          256.0
+        ]
+      ],
+      "answer": "SMALL-SCALE DEMO ADAPTER. RGB land-cover estimate over valid RGB pixels (100.0% of the image): water 19%, vegetation 52%, built up 18%, other 10%. These are coarse appearance-based estimates, not validated object counts. VRSBench LoRA-adapted ViLT suggestion (unverified): no. For your water question: 19.4% candidate coverage. \n\nPretrained Grounding DINO identified 1 candidate regions for this query. Boxes and scores are model predictions; physical checks are reported independently.\n\nVerification: vqa_answer: required physical evidence unavailable; claim remains unverified",
+      "decision": "ANSWERED"
+    },
+    {
+      "key": "water_b",
+      "query": "Where is the water body in this image?",
+      "job_id": "16570a7a0b154133923f96be5f4af25d",
+      "status": "complete",
+      "task": "GROUNDING",
+      "boxes": [
+        [
+          0.0,
+          0.0,
+          256.0,
+          256.0
+        ]
+      ],
+      "answer": "SMALL-SCALE DEMO ADAPTER. RGB land-cover estimate over valid RGB pixels (100.0% of the image): water 19%, vegetation 52%, built up 18%, other 10%. These are coarse appearance-based estimates, not validated object counts. VRSBench LoRA-adapted ViLT suggestion (unverified): nowhere. For your water question: 19.4% candidate coverage. \n\nPretrained Grounding DINO identified 1 candidate regions for this query. Boxes and scores are model predictions; physical checks are reported independently.\n\nVerification: vqa_answer: required physical evidence unavailable; claim remains unverified",
+      "decision": "ANSWERED"
+    },
+    {
+      "key": "water_c",
+      "query": "Highlight regions containing water.",
+      "job_id": "46169a2c0ce24fceac07e73a9bb91e17",
+      "status": "complete",
+      "task": "GROUNDING",
+      "boxes": [
+        [
+          0.0,
+          0.0,
+          256.0,
+          256.0
+        ]
+      ],
+      "answer": "SMALL-SCALE DEMO ADAPTER. RGB land-cover estimate over valid RGB pixels (100.0% of the image): water 19%, vegetation 52%, built up 18%, other 10%. These are coarse appearance-based estimates, not validated object counts. VRSBench LoRA-adapted ViLT suggestion (unverified): sky. For your water question: 19.4% candidate coverage. \n\nPretrained Grounding DINO identified 1 candidate regions for this query. Boxes and scores are model predictions; physical checks are reported independently.\n\nVerification: vqa_answer: required physical evidence unavailable; claim remains unverified",
+      "decision": "ANSWERED"
+    },
+    {
+      "key": "contrast",
+      "query": "Locate buildings in this image.",
+      "job_id": "b5c27bd8525748bfbf4ca02ddc6433ca",
+      "status": "complete",
+      "task": "GROUNDING",
+      "boxes": [
+        [
+          0.0,
+          0.0,
+          256.0,
+          256.0
+        ]
+      ],
+      "answer": "SMALL-SCALE DEMO ADAPTER. RGB land-cover estimate over valid RGB pixels (100.0% of the image): water 19%, vegetation 52%, built up 18%, other 10%. These are coarse appearance-based estimates, not validated object counts. VRSBench LoRA-adapted ViLT suggestion (unverified): no. \n\nPretrained Grounding DINO identified 1 candidate regions for this query. Boxes and scores are model predictions; physical checks are reported independently.\n\nVerification: vqa_answer: required physical evidence unavailable; claim remains unverified",
+      "decision": "ANSWERED"
+    }
+  ],
+  "water_paraphrase_mean_iou": 1.0,
+  "water_vs_buildings_iou": 1.0,
+  "all_jobs_complete": true,
+  "interpretation": "Same-concept paraphrases should be spatially consistent when evidence exists; a semantically different query should be allowed to return a different region or no region."
+}

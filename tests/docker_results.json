@@ -1,0 +1,30 @@
+{
+    "with_ml":  true,
+    "verified_at":  "2026-09-11T15:13:48.2422960Z",
+    "results":  [
+                    {
+                        "status":  "passed",
+                        "demo":  "vqa",
+                        "trace_events":  11,
+                        "trust":  0.5218
+                    },
+                    {
+                        "status":  "passed",
+                        "demo":  "grounding",
+                        "trace_events":  15,
+                        "trust":  0.4905
+                    },
+                    {
+                        "status":  "passed",
+                        "demo":  "change",
+                        "trace_events":  11,
+                        "trust":  0.3887
+                    },
+                    {
+                        "status":  "passed",
+                        "demo":  "fusion",
+                        "trace_events":  12,
+                        "trust":  0.5204
+                    }
+                ]
+}

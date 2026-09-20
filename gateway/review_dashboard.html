@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SatQuery AI — Analyst Review Queue</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(17, 24, 39, 0.85);
+      --card-border: rgba(56, 189, 248, 0.2);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --cyan: #38bdf8;
+      --cyan-glow: rgba(56, 189, 248, 0.3);
+      --green: #10b981;
+      --red: #ef4444;
+      --amber: #f59e0b;
+      --font-main: 'Space Grotesk', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
+      color: var(--text);
+      font-family: var(--font-main);
+      min-height: 100vh;
+      padding: 24px;
+    }
+    .header {
+      max-width: 1280px;
+      margin: 0 auto 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .brand img { width: 38px; height: 38px; border-radius: 8px; }
+    .brand-title { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -0.02em; }
+    .brand-subtitle { font-size: 13px; color: var(--cyan); font-family: var(--font-mono); }
+    .nav-links { display: flex; gap: 12px; }
+    .btn-link {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.2s;
+    }
+    .btn-link:hover { background: rgba(56, 189, 248, 0.15); border-color: var(--cyan); }
+    
+    .main-container { max-width: 1280px; margin: 0 auto; }
+    
+    /* Stats Bar */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .stat-label { font-size: 12px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; letter-spacing: 0.05em; }
+    .stat-val { font-size: 28px; font-weight: 700; font-family: var(--font-mono); }
+    .stat-pending { color: var(--amber); }
+    .stat-confirmed { color: var(--green); }
+    .stat-rejected { color: var(--red); }
+    .stat-total { color: var(--cyan); }
+
+    /* Filter tabs */
+    .filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .filter-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .filter-btn.active {
+      background: var(--cyan);
+      color: #0b0f19;
+      border-color: var(--cyan);
+      box-shadow: 0 0 15px var(--cyan-glow);
+    }
+
+    /* Candidate list */
+    .candidate-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .candidate-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 240px 1fr 280px;
+      gap: 24px;
+      align-items: center;
+      transition: border-color 0.2s;
+    }
+    .candidate-card:hover {
+      border-color: var(--cyan);
+    }
+    .previews {
+      display: flex;
+      gap: 8px;
+    }
+    .preview-box {
+      width: 110px;
+      height: 110px;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+    .preview-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .preview-tag {
+      position: absolute;
+      bottom: 4px;
+      left: 4px;
+      background: rgba(0,0,0,0.7);
+      padding: 2px 6px;
+      font-size: 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+    }
+    .cand-info {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .cand-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    .cand-query {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .metrics-row {
+      display: flex;
+      gap: 16px;
+      margin-top: 4px;
+    }
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .metric-k { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+    .metric-v { font-size: 13px; font-weight: 600; font-family: var(--font-mono); }
+    .gate-reason {
+      font-size: 12px;
+      color: #94a3b8;
+      background: rgba(0,0,0,0.3);
+      padding: 6px 10px;
+      border-radius: 6px;
+      border-left: 3px solid var(--cyan);
+    }
+    .cand-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+    }
+    .badge-pending { background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid var(--amber); }
+    .badge-confirmed { background: rgba(16, 185, 129, 0.15); color: var(--green); border: 1px solid var(--green); }
+    .badge-rejected { background: rgba(239, 68, 68, 0.15); color: var(--red); border: 1px solid var(--red); }
+    
+    .action-row {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+    .btn-confirm {
+      flex: 1;
+      padding: 8px 12px;
+      background: rgba(16, 185, 129, 0.2);
+      border: 1px solid var(--green);
+      color: #34d399;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+    .btn-confirm:hover { background: var(--green); color: #000; }
+    .btn-reject {
+      flex: 1;
+      padding: 8px 12px;
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid var(--red);
+      color: #f87171;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s;
+    }
+    .btn-reject:hover { background: var(--red); color: #fff; }
+    .notes-input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      color: #fff;
+      padding: 6px 10px;
+      font-size: 12px;
+      outline: none;
+    }
+    .notes-input:focus { border-color: var(--cyan); }
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <a href="/" class="brand">
+      <img src="/satquery_logo.png" alt="SatQuery" onerror="this.style.display='none'">
+      <div>
+        <div class="brand-title">SatQuery AI</div>
+        <div class="brand-subtitle">Analyst Review Queue — Ground Truth Verification</div>
+      </div>
+    </a>
+    <div class="nav-links">
+      <a href="/" class="btn-link">← Back to Workspace</a>
+      <a href="/vision-setup" class="btn-link">⚙️ Cloud Vision Setup</a>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Pending Review</span>
+        <span class="stat-val stat-pending" id="stat-pending">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Confirmed Ground Truth</span>
+        <span class="stat-val stat-confirmed" id="stat-confirmed">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Rejected False Alarms</span>
+        <span class="stat-val stat-rejected" id="stat-rejected">0</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Total Candidates</span>
+        <span class="stat-val stat-total" id="stat-total">0</span>
+      </div>
+    </div>
+
+    <div class="filters">
+      <button class="filter-btn active" onclick="setFilter('pending')">Pending Review</button>
+      <button class="filter-btn" onclick="setFilter('confirmed')">Confirmed</button>
+      <button class="filter-btn" onclick="setFilter('rejected')">Rejected</button>
+      <button class="filter-btn" onclick="setFilter('')">All Candidates</button>
+    </div>
+
+    <div class="candidate-grid" id="candidate-list">
+      <div class="empty-state">Loading candidate queue...</div>
+    </div>
+  </div>
+
+  <script>
+    let currentFilter = 'pending';
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/review-queue/stats');
+        const data = await res.json();
+        document.getElementById('stat-pending').textContent = data.pending || 0;
+        document.getElementById('stat-confirmed').textContent = data.confirmed || 0;
+        document.getElementById('stat-rejected').textContent = data.rejected || 0;
+        document.getElementById('stat-total').textContent = data.total || 0;
+      } catch (err) {
+        console.error('Failed to load stats', err);
+      }
+    }
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(filter || 'all'));
+      });
+      loadCandidates();
+    }
+
+    async function loadCandidates() {
+      const container = document.getElementById('candidate-list');
+      try {
+        const url = currentFilter ? `/api/review-queue?decision=${encodeURIComponent(currentFilter)}` : '/api/review-queue';
+        const res = await fetch(url);
+        const candidates = await res.json();
+
+        if (!candidates.length) {
+          container.innerHTML = `<div class="empty-state">No candidates found matching filter: <b>${currentFilter || 'all'}</b>.</div>`;
+          return;
+        }
+
+        container.innerHTML = candidates.map(c => {
+          const decClass = c.decision === 'confirmed' ? 'badge-confirmed' : c.decision === 'rejected' ? 'badge-rejected' : 'badge-pending';
+          const decLabel = c.decision === 'confirmed' ? '✓ CONFIRMED' : c.decision === 'rejected' ? '✗ REJECTED' : '⏳ PENDING';
+          const gate = typeof c.gate_summary === 'object' ? c.gate_summary : {};
+          const reason = gate.reason || c.status;
+
+          return `
+            <div class="candidate-card" id="card-${c.candidate_id}">
+              <div class="previews">
+                <div class="preview-box">
+                  <img src="${c.preview_before || '/satquery_logo.png'}" alt="Before" onerror="this.src='/satquery_logo.png'">
+                  <span class="preview-tag">Before</span>
+                </div>
+                <div class="preview-box">
+                  <img src="${c.preview_after || '/satquery_logo.png'}" alt="After" onerror="this.src='/satquery_logo.png'">
+                  <span class="preview-tag">After</span>
+                </div>
+              </div>
+              <div class="cand-info">
+                <div class="cand-meta">
+                  <span>ID: ${c.candidate_id.substring(0, 8)}</span>
+                  <span>•</span>
+                  <span>${new Date(c.created_at).toLocaleString()}</span>
+                  <span>•</span>
+                  <span style="color:var(--cyan)">Status: ${c.status}</span>
+                </div>
+                <div class="cand-query">${escapeHtml(c.query || 'Change Detection')}</div>
+                <div class="metrics-row">
+                  <div class="metric-item">
+                    <span class="metric-k">Cloud Cover</span>
+                    <span class="metric-v" style="color:${(c.cloud_fraction > 0.15) ? 'var(--red)' : 'var(--green)'}">
+                      ${(c.cloud_fraction * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-k">Valid Pixels</span>
+                    <span class="metric-v" style="color:${(c.valid_fraction < 0.8) ? 'var(--red)' : 'var(--green)'}">
+                      ${(c.valid_fraction * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div class="metric-item">
+                    <span class="metric-k">Change Ratio</span>
+                    <span class="metric-v" style="color:var(--cyan)">
+                      ${(c.change_fraction * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+                <div class="gate-reason">Gate Check: ${escapeHtml(reason)}</div>
+                ${c.analyst_notes ? `<div style="font-size:12px;color:#a7f3d0;"><b>Analyst Note:</b> ${escapeHtml(c.analyst_notes)}</div>` : ''}
+              </div>
+              <div class="cand-actions">
+                <span class="status-badge ${decClass}">${decLabel}</span>
+                ${c.decision === 'pending' ? `
+                  <input type="text" class="notes-input" id="notes-${c.candidate_id}" placeholder="Optional analyst notes...">
+                  <div class="action-row">
+                    <button class="btn-confirm" onclick="decide('${c.candidate_id}', 'confirm')">Confirm</button>
+                    <button class="btn-reject" onclick="decide('${c.candidate_id}', 'reject')">Reject</button>
+                  </div>
+                ` : `
+                  <div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">Decided: ${new Date(c.decided_at).toLocaleDateString()}</div>
+                `}
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        container.innerHTML = `<div class="empty-state" style="color:var(--red)">Failed to load candidates: ${err.message}</div>`;
+      }
+    }
+
+    async function decide(id, action) {
+      const notes = document.getElementById(`notes-${id}`)?.value || '';
+      const formData = new FormData();
+      if (notes) formData.append('notes', notes);
+      try {
+        const res = await fetch(`/api/review-queue/${id}/${action}`, {
+          method: 'POST',
+          body: formData
+        });
+        if (res.ok) {
+          loadStats();
+          loadCandidates();
+        } else {
+          alert('Action failed');
+        }
+      } catch (err) {
+        alert('Network error: ' + err.message);
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    loadStats();
+    loadCandidates();
+  </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "transport": "real loopback HTTP",
+  "services": 4,
+  "results": [
+    {
+      "demo": "vqa",
+      "status": "passed",
+      "http_calls": 1
+    },
+    {
+      "demo": "grounding",
+      "status": "passed",
+      "http_calls": 2
+    },
+    {
+      "demo": "change",
+      "status": "passed",
+      "http_calls": 1
+    },
+    {
+      "demo": "fusion",
+      "status": "passed",
+      "http_calls": 1
+    }
+  ],
+  "docker_runtime_verified": false
+}

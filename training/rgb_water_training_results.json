@@ -1,0 +1,34 @@
+{
+  "validation": {
+    "iou": 0.40961136648558294,
+    "precision": 0.6257660878447395,
+    "recall": 0.5425060881115785,
+    "f1": 0.5811692161745523,
+    "brier": 0.08877184276478074,
+    "ece_10_bins": 0.01837453037001517,
+    "pixels": 115000,
+    "tp": 9802,
+    "fp": 5862,
+    "fn": 8266
+  },
+  "test": {
+    "iou": 0.4353460159911773,
+    "precision": 0.7747791952894995,
+    "recall": 0.4984217171717172,
+    "f1": 0.6066077602766039,
+    "brier": 0.090695542322988,
+    "ece_10_bins": 0.04067013334600876,
+    "pixels": 120000,
+    "tp": 9474,
+    "fp": 2754,
+    "fn": 9534
+  },
+  "steps": 1600,
+  "selected_step": 1200,
+  "train_chips": 96,
+  "validation_chips": 24,
+  "test_chips": 24,
+  "temperature": 1.15,
+  "threshold": 0.35,
+  "scope": "Sen1Floods11 fixed RGB rendering at reflectance / 0.3; sampled 5000 valid pixels/chip. Transfer to user JPEGs and other sensors is unvalidated. Spatial context uses 5x5 RGB moments. No test-label training or checkpoint selection."
+}

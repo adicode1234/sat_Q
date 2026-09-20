@@ -1,0 +1,37 @@
+import { chromium } from 'playwright';
+import fs from 'node:fs';
+import path from 'node:path';
+const out=path.resolve('docs/evidence/judge-polish');fs.mkdirSync(out,{recursive:true});
+const baseline=process.argv.includes('--baseline');
+const browser=await chromium.launch({headless:true});
+const page=await browser.newPage({viewport:{width:1920,height:1080}});
+const errors=[];const consoleErrors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text())});
+await page.goto('http://127.0.0.1:8080',{waitUntil:'networkidle'});
+await page.locator('.history>summary').click();
+await page.locator('.history button').nth(1).click();
+await page.locator('.analysis-summary').waitFor();
+await page.locator('.history>summary').click();
+if(await page.locator('.analysis-summary').count()!==1)throw Error('Expected exactly one primary analysis summary');
+if(await page.getByText('MODEL CONFIDENCE —',{exact:true}).count())throw Error('Unexplained model-confidence dash is visible');
+if(await page.getByText('ANALYSIS COMPLETE',{exact:true}).count()!==1)throw Error('Decision status was not presented as ANALYSIS COMPLETE');
+if(await page.getByText('Usable',{exact:true}).count()===0)throw Error('Usable alignment label is missing');
+if(await page.locator('#benchmarks[open]').count())throw Error('Research validation should be collapsed initially');
+await page.getByRole('button',{name:'EVIDENCE OVERLAY'}).click();
+const opacity=page.locator('input[aria-label="Evidence overlay opacity"]');
+if(await opacity.inputValue()!=='0.4')throw Error('Evidence opacity did not default to 40%');
+await opacity.fill('0.65');
+if(await opacity.inputValue()!=='0.65')throw Error('Evidence opacity control did not respond');
+await page.screenshot({path:path.join(out,'evidence_overlay_1920.png'),fullPage:false});
+await page.locator('.view-modes button').filter({hasText:'COMPARE'}).click();
+if(await page.locator('img[alt^="Before:"]').count()!==1 || await page.locator('img[alt^="After:"]').count()!==1)throw Error('Before/After comparison did not render');
+await page.getByRole('button',{name:'Judge / presentation mode'}).click();
+await page.screenshot({path:path.join(out,'judge_mode_1920.png'),fullPage:false});
+for(const [width,height] of [[1920,1080],[1366,768],[1024,768],[390,844]]){
+  await page.setViewportSize({width,height});
+  if(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth))throw Error(`Horizontal overflow at ${width}x${height}`);
+  await page.screenshot({path:path.join(out,`${baseline?'before':'after'}_${width}.png`),fullPage:true});
+}
+if(errors.length)throw Error(errors.join('\n'));
+if(consoleErrors.length)throw Error(`Console errors:\n${consoleErrors.join('\n')}`);
+console.log(JSON.stringify({page_errors:errors.length,console_errors:consoleErrors.length,screenshots:4}));
+await browser.close();

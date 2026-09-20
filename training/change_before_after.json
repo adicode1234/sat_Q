@@ -1,0 +1,72 @@
+{
+  "mode": "REAL ITERATIVE MULTI-EPOCH CDVQA TRAINING",
+  "samples": 48,
+  "unique_training_pairs": 2,
+  "epochs": 10,
+  "steps_per_epoch": 40,
+  "total_steps": 400,
+  "seed": 1,
+  "first_loss": 2.186372756958008,
+  "last_loss": 0.2952880561351776,
+  "before": [
+    {
+      "id": "cdvqa-test-00000000",
+      "query": "Did the areas of non-vegetated ground surface change?",
+      "reference": "yes",
+      "prediction": "0_to_10",
+      "confidence": 0.12076164036989212
+    },
+    {
+      "id": "cdvqa-test-00000001",
+      "query": "Did the regions of trees change?",
+      "reference": "no",
+      "prediction": "0",
+      "confidence": 0.12163351476192474
+    },
+    {
+      "id": "cdvqa-test-00000002",
+      "query": "Have the areas of low vegetation changed?",
+      "reference": "no",
+      "prediction": "0",
+      "confidence": 0.12927962839603424
+    },
+    {
+      "id": "cdvqa-test-00000003",
+      "query": "Have the regions of water changed?",
+      "reference": "no",
+      "prediction": "0",
+      "confidence": 0.12482533603906631
+    }
+  ],
+  "after": [
+    {
+      "id": "cdvqa-test-00000000",
+      "query": "Did the areas of non-vegetated ground surface change?",
+      "reference": "yes",
+      "prediction": "yes",
+      "confidence": 0.8684157729148865
+    },
+    {
+      "id": "cdvqa-test-00000001",
+      "query": "Did the regions of trees change?",
+      "reference": "no",
+      "prediction": "no",
+      "confidence": 0.9965214729309082
+    },
+    {
+      "id": "cdvqa-test-00000002",
+      "query": "Have the areas of low vegetation changed?",
+      "reference": "no",
+      "prediction": "no",
+      "confidence": 0.563895046710968
+    },
+    {
+      "id": "cdvqa-test-00000003",
+      "query": "Have the regions of water changed?",
+      "reference": "no",
+      "prediction": "no",
+      "confidence": 0.9956244826316833
+    }
+  ],
+  "limitations": "Trained on CDVQA dataset with iterative augmentation loops. Test pairs excluded from training."
+}

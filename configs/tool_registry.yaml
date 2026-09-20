@@ -1,0 +1,317 @@
+version: 1
+tools:
+- name: real_water_v1
+  version: '1.0'
+  tasks: [WATER_ANALYSIS]
+  scenarios: [SINGLE, CROSS_MODAL_PAIR]
+  module: models.water
+  service: null
+  eligibility: models.water:supports
+  keywords: {WATER_ANALYSIS: [water, flood, flooding, river, lake, pond, reservoir]}
+  priority: 400
+  params: {}
+  timeout_s: 120
+  required_image_count: 1-2
+  required_metadata: [known reflectance scaling for optical, calibrated VV and VH for SAR]
+  confidence_semantics: validation-temperature model score bounded by validation IoU; sensor transfer uncalibrated
+  output_schema: gateway.contracts.SpecialistResult
+- name: temporal_analysis_v1
+  tasks:
+  - TEMPORAL_CHANGE_ANALYSIS
+  scenarios:
+  - BITEMPORAL_PAIR
+  module: controller.temporal_analysis
+  service: null
+  keywords:
+    TEMPORAL_CHANGE_ANALYSIS:
+    - difference
+    - differences
+    - change
+    - changes
+    - compare
+    - before
+    - after
+    - what
+    - happened
+  default_task: TEMPORAL_CHANGE_ANALYSIS
+  priority: 100
+  params:
+    threshold:
+      type: number
+      default: 0.25
+      min: 0.05
+      max: 0.9
+  timeout_s: 180
+  required_image_count: 2
+  required_metadata:
+  - aligned grids
+  confidence_semantics: uncalibrated auxiliary Change-VQA score; deterministic evidence is separate
+  output_schema: gateway.contracts.SpecialistResult
+- name: vqa_caption_v1
+  tasks:
+  - VQA
+  - CAPTION
+  scenarios:
+  - SINGLE
+  module: models.vqa_caption.model
+  service: http://vqa:8000/run
+  keywords:
+    CAPTION:
+    - describe
+    - caption
+    - summarize
+    VQA:
+    - what
+    - how
+    - is
+    - are
+    - count
+    - water
+    - river
+    - lake
+    - stream
+    - flood
+    - vegetation
+    - tree
+    - trees
+    - forest
+    - building
+    - buildings
+    - road
+    - land
+    - pond
+    - reservoir
+    - all
+    - everything
+    - sabko
+  default_task: VQA
+  priority: 10
+  params: {}
+  version: '1.0'
+  required_image_count: 1
+  required_metadata:
+  - validated input bundle
+  timeout_s: 180
+  confidence_semantics: uncalibrated bounded model score; deterministic modes use
+    zero neural score
+  output_schema: gateway.contracts.SpecialistResult
+- name: grounding_v1
+  tasks:
+  - GROUNDING
+  scenarios:
+  - SINGLE
+  modalities:
+  - optical
+  module: models.grounding.model
+  service: http://grounding:8000/run
+  keywords:
+    GROUNDING:
+    - locate
+    - highlight
+    - outline
+    - ground
+    - where
+    - box
+    - see
+    - show
+    - find
+    - detect
+    - identify
+    - search
+    - view
+    - point
+    - display
+    - mark
+    - river
+    - water
+    - stream
+    - trees
+    - vegetation
+    - building
+    - buildings
+    - road
+    - roads
+    - pond
+    - lake
+    - reservoir
+    - highway
+    - bridge
+    - transport
+    - all
+    - everything
+    - sabko
+  priority: 20
+  depends_on:
+  - vqa_caption_v1
+  params:
+    box_threshold:
+      type: number
+      default: 0.35
+      min: 0.05
+      max: 0.9
+    text_threshold:
+      type: number
+      default: 0.25
+      min: 0.05
+      max: 0.9
+  version: '1.0'
+  required_image_count: 1
+  required_metadata:
+  - validated input bundle
+  timeout_s: 180
+  confidence_semantics: uncalibrated bounded model score; deterministic modes use
+    zero neural score
+  output_schema: gateway.contracts.SpecialistResult
+- name: change_vqa_v1
+  tasks:
+  - CHANGE_VQA
+  scenarios:
+  - BITEMPORAL_PAIR
+  module: models.change_vqa.model
+  service: http://change:8000/run
+  keywords:
+    CHANGE_VQA:
+    - change
+    - changed
+    - difference
+    - before
+    - after
+  default_task: CHANGE_VQA
+  priority: 30
+  params:
+    threshold:
+      type: number
+      default: 0.25
+      min: 0.05
+      max: 0.9
+  version: '1.0'
+  required_image_count: 2
+  required_metadata:
+  - validated input bundle
+  timeout_s: 180
+  confidence_semantics: uncalibrated bounded model score; deterministic modes use
+    zero neural score
+  output_schema: gateway.contracts.SpecialistResult
+- name: fusion_optical_sar_v1
+  tasks:
+  - FUSION_ANALYSIS
+  scenarios:
+  - CROSS_MODAL_PAIR
+  module: models.fusion_optical_sar.model
+  service: http://fusion:8000/run
+  keywords:
+    FUSION_ANALYSIS:
+    - sar
+    - optical
+    - water
+    - compare
+    - jointly
+  default_task: FUSION_ANALYSIS
+  priority: 30
+  params: {}
+  version: '1.0'
+  required_image_count: 2
+  required_metadata:
+  - validated input bundle
+  timeout_s: 180
+  confidence_semantics: uncalibrated bounded model score; deterministic modes use
+    zero neural score
+  output_schema: gateway.contracts.SpecialistResult
+- name: measurement_v1
+  version: '1.0'
+  tasks:
+  - MEASUREMENT
+  - TREND
+  scenarios:
+  - SINGLE
+  - MULTI_DATE
+  - BITEMPORAL_PAIR
+  - CROSS_MODAL_PAIR
+  module: models.measurement
+  service: null
+  keywords:
+    MEASUREMENT:
+    - measure
+    - area
+    - hectares
+    - statistics
+    - ndvi
+    - ndwi
+    TREND:
+    - trend
+    - trajectory
+    - timeline
+  default_task: TREND
+  priority: 1
+  params: {}
+  timeout_s: 60
+  required_image_count: 1-20
+  required_metadata:
+  - known index bands or calibrated SAR
+  confidence_semantics: physical measurement; no neural confidence
+  output_schema: gateway.contracts.SpecialistResult
+- name: change_mask_v1
+  version: '1.0'
+  tasks:
+  - CHANGE_MASK
+  scenarios:
+  - BITEMPORAL_PAIR
+  module: models.change_mask.model
+  service: http://change-mask:8000/run
+  depends_on:
+  - change_vqa_v1
+  keywords:
+    CHANGE_MASK:
+    - where
+    - mask
+    - map
+    - spatial
+  priority: 40
+  params:
+    threshold:
+      type: number
+      default: 0.25
+      min: 0.05
+      max: 0.9
+  timeout_s: 60
+  required_image_count: 2
+  required_metadata:
+  - aligned grids
+  confidence_semantics: deterministic appearance difference
+  output_schema: gateway.contracts.SpecialistResult
+
+- name: GeoChat
+  specialist: GeoChat
+  pipeline: specialists
+  tasks: [VQA, GROUNDING]
+  scenarios: [SINGLE]
+  module: models.specialist_runtime
+  service: null
+  params: {}
+  priority: 0
+  timeout_s: 180
+  output_schema: gateway.contracts.RuntimeResponse
+
+- name: TEOChat
+  specialist: TEOChat
+  pipeline: specialists
+  tasks: [CHANGE_VQA]
+  scenarios: [BITEMPORAL_PAIR]
+  module: models.specialist_runtime
+  service: null
+  params: {}
+  priority: 0
+  timeout_s: 180
+  output_schema: gateway.contracts.RuntimeResponse
+
+- name: EarthMind
+  specialist: EarthMind
+  pipeline: specialists
+  tasks: [FUSION_ANALYSIS]
+  scenarios: [CROSS_MODAL_PAIR]
+  module: models.specialist_runtime
+  service: null
+  params: {}
+  priority: 0
+  timeout_s: 180
+  output_schema: gateway.contracts.RuntimeResponse

@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: satquery-ai
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/auth/session
+    autoDeploy: true
+    envVars:
+      - key: SATQUERY_PIPELINE
+        value: legacy
+      - key: SATQUERY_CLOUD_VISION
+        value: "1"
+      - key: SATQUERY_VISION_PROVIDER
+        value: openrouter
+      - key: OPENROUTER_MODEL
+        value: inclusionai/ling-3.0-flash-vl:free
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SATQUERY_MAX_UPLOAD_MB
+        value: "128"

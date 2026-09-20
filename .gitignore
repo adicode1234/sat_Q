@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.venv_win/
+*.sqlite3-journal
+
+# Testing & Cache
+.pytest_cache/
+.test-cache/
+.test-runs/
+.accuracy-backup/
+.repair-backup/
+.rgb-convert/
+logs/*.log
+satquery_verification_*.txt
+
+# Node & Frontend
+node_modules/
+frontend/node_modules/
+.npm
+npm-debug.log*
+
+# Large Videos & Media (Exceeds GitHub 100MB limit)
+*.mp4
+frontend/public/videos/
+frontend/dist/videos/
+
+# Large Model Weights & Checkpoints (Exceeds GitHub 100MB limit)
+models/checkpoints/
+*.safetensors
+*.h5
+*.bin
+*.pth
+*.pt
+*.onnx
+*.zip
+
+# Environment & Secrets (Never commit credentials!)
+.env
+.env.local
+.env.*.local
+TAB
+
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Heavy Datasets, Local Reports & Scratch Files
+data/uploads/*
+!data/uploads/.gitkeep
+reports/*
+!reports/.gitkeep
+scratch/
+data/sen1floods11/
+data/rsvqa/
+data/cdvqa/
+evaluation/results*.json
+evaluation/runs/
+evaluation/*.log

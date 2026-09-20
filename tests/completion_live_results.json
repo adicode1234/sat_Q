@@ -1,0 +1,43 @@
+[
+  {
+    "demo": "vqa",
+    "query_id": "9c2f2ae4e53c4f0a822ebb1802168f60",
+    "decision": "ANSWERED",
+    "modes": [
+      "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+    ],
+    "html": "passed",
+    "gis": false
+  },
+  {
+    "demo": "grounding",
+    "query_id": "dd4c1793877a41358b9a9f47b3c5b6a1",
+    "decision": "ANSWERED",
+    "modes": [
+      "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary",
+      "pretrained_grounding_dino_tiny"
+    ],
+    "html": "passed",
+    "gis": true
+  },
+  {
+    "demo": "change",
+    "query_id": "28192bc458b54c729d8980e3888b1424",
+    "decision": "ANSWERED",
+    "modes": [
+      "cdvqa_tiny_siamese_vqa + deterministic_candidate_mask"
+    ],
+    "html": "passed",
+    "gis": true
+  },
+  {
+    "demo": "fusion",
+    "query_id": "9371375835f4417190671099e61198f9",
+    "decision": "ANSWERED",
+    "modes": [
+      "adapted_tiny_rgb_mlp + optical_sar_proxy_fusion + synthetic_trained_cross_attention"
+    ],
+    "html": "passed",
+    "gis": true
+  }
+]

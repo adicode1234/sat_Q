@@ -1,0 +1,14 @@
+{
+  "http_status": 200,
+  "analysis_id": "e0883aa777a1445d9cf91d4e9b47cfcc",
+  "decision": {
+    "status": "INSUFFICIENT_EVIDENCE",
+    "code": "MODEL_DISAGREEMENT",
+    "reason": "I cannot reliably identify or measure the requested feature in this image with the available local models. Their water masks disagree, so I have withheld the overlay and percentages. A map screenshot can include roads, roofs, labels and symbols that these models mistake for water. Use original imagery where available; this does not establish that water is absent.",
+    "needed": ""
+  },
+  "runtime_seconds": 11.41420695800116,
+  "cloud_used": false,
+  "overlay_withheld": true,
+  "report_url": "/reports/e0883aa777a1445d9cf91d4e9b47cfcc.json"
+}

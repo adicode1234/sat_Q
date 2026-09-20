@@ -1,0 +1,137 @@
+{
+  "validation": {
+    "iou": 0.28414013129639853,
+    "f1": 0.4425375772806758,
+    "precision": 0.44909912530788776,
+    "recall": 0.43616500282539084,
+    "brier": 0.1156802014911022,
+    "tp": 23156,
+    "fp": 28405,
+    "fn": 29934,
+    "tn": 258360,
+    "pixels": 339855
+  },
+  "test": {
+    "iou": 0.2582120194102277,
+    "f1": 0.4104427797967811,
+    "precision": 0.458406676468761,
+    "recall": 0.3715652538816618,
+    "brier": 0.13229321868356855,
+    "tp": 22136,
+    "fp": 26153,
+    "fn": 37439,
+    "tn": 248651,
+    "pixels": 334379
+  },
+  "epochs": 20,
+  "selected_epoch": 10,
+  "threshold": 0.2,
+  "chip_splits": {
+    "train": 96,
+    "validation": 24,
+    "test": 24
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "loss": 0.8130043049653372,
+      "validation_iou": 0.2147745253164557
+    },
+    {
+      "epoch": 2,
+      "loss": 0.7004929309089979,
+      "validation_iou": 0.2125131392532334
+    },
+    {
+      "epoch": 3,
+      "loss": 0.6532336249947548,
+      "validation_iou": 0.22184280683276833
+    },
+    {
+      "epoch": 4,
+      "loss": 0.6357404788335165,
+      "validation_iou": 0.25009994921499346
+    },
+    {
+      "epoch": 5,
+      "loss": 0.6301292975743612,
+      "validation_iou": 0.2759004970026131
+    },
+    {
+      "epoch": 6,
+      "loss": 0.6212455866237482,
+      "validation_iou": 0.1969582354580563
+    },
+    {
+      "epoch": 7,
+      "loss": 0.6221262651185194,
+      "validation_iou": 0.20438082097274923
+    },
+    {
+      "epoch": 8,
+      "loss": 0.61232386653622,
+      "validation_iou": 0.17625024544232484
+    },
+    {
+      "epoch": 9,
+      "loss": 0.6212738466759523,
+      "validation_iou": 0.08177105409018291
+    },
+    {
+      "epoch": 10,
+      "loss": 0.6210599020123482,
+      "validation_iou": 0.28414013129639853
+    },
+    {
+      "epoch": 11,
+      "loss": 0.6135857254266739,
+      "validation_iou": 0.12314052330986851
+    },
+    {
+      "epoch": 12,
+      "loss": 0.6153519762059053,
+      "validation_iou": 0.20451850876037414
+    },
+    {
+      "epoch": 13,
+      "loss": 0.6159963545699915,
+      "validation_iou": 0.06086009798584649
+    },
+    {
+      "epoch": 14,
+      "loss": 0.6257325547436873,
+      "validation_iou": 0.26557554606173656
+    },
+    {
+      "epoch": 15,
+      "loss": 0.6182240036626657,
+      "validation_iou": 0.1649640277009139
+    },
+    {
+      "epoch": 16,
+      "loss": 0.618888508528471,
+      "validation_iou": 0.17879797871196645
+    },
+    {
+      "epoch": 17,
+      "loss": 0.6241593609253565,
+      "validation_iou": 0.07363371240228476
+    },
+    {
+      "epoch": 18,
+      "loss": 0.6257897205650806,
+      "validation_iou": 0.09007754337098743
+    },
+    {
+      "epoch": 19,
+      "loss": 0.6124849282205105,
+      "validation_iou": 0.2559009591184273
+    },
+    {
+      "epoch": 20,
+      "loss": 0.587918488929669,
+      "validation_iou": 0.1293047764745878
+    }
+  ],
+  "scope": "128x128 labelled chip segmentation; fixed official Sen1Floods11 splits. Test evaluated only after validation checkpoint selection. Not directly comparable to previous sampled full-resolution pixel protocol; sensor/screenshot transfer unvalidated."
+}

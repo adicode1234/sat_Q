@@ -1,0 +1,81 @@
+[
+  {
+    "id": "vqa",
+    "title": "Survey the scene",
+    "label": "Single image \u00b7 VQA",
+    "scenario": "SINGLE",
+    "query": "What land cover is visible in this satellite image?",
+    "paths": [
+      "data/demo/optical_before.tif"
+    ],
+    "options": [
+      {
+        "modality": "optical",
+        "date": "2024-01-01"
+      }
+    ],
+    "provenance": "Synthetic georeferenced fixture; not a real observation or public benchmark"
+  },
+  {
+    "id": "grounding",
+    "title": "Locate surface water",
+    "label": "Single image \u00b7 Grounding",
+    "scenario": "SINGLE",
+    "query": "Highlight water in this image.",
+    "paths": [
+      "data/demo/optical_before.tif"
+    ],
+    "options": [
+      {
+        "modality": "optical",
+        "date": "2024-01-01"
+      }
+    ],
+    "provenance": "Synthetic georeferenced fixture; not a real observation or public benchmark"
+  },
+  {
+    "id": "change",
+    "title": "Inspect change over time",
+    "label": "Bi-temporal \u00b7 Change VQA",
+    "scenario": "BITEMPORAL_PAIR",
+    "query": "What changed between these two acquisitions?",
+    "paths": [
+      "data/demo/optical_before.tif",
+      "data/demo/optical_after.tif"
+    ],
+    "options": [
+      {
+        "modality": "optical",
+        "date": "2024-01-01"
+      },
+      {
+        "modality": "optical",
+        "date": "2024-07-01"
+      }
+    ],
+    "provenance": "Synthetic georeferenced fixture; not a real observation or public benchmark"
+  },
+  {
+    "id": "fusion",
+    "title": "Cross-check optical + SAR",
+    "label": "Cross-modal \u00b7 Joint analysis",
+    "scenario": "CROSS_MODAL_PAIR",
+    "query": "Compare water evidence in optical and SAR imagery.",
+    "paths": [
+      "data/demo/optical_before.tif",
+      "data/demo/sar.tif"
+    ],
+    "options": [
+      {
+        "modality": "optical",
+        "date": "2024-01-01"
+      },
+      {
+        "modality": "SAR",
+        "sar_units": "db",
+        "date": "2024-01-01"
+      }
+    ],
+    "provenance": "Synthetic georeferenced fixture; not a real observation or public benchmark"
+  }
+]

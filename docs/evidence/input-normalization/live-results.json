@@ -1,0 +1,713 @@
+{
+  "fixture_note": "Generated acceptance rasters reproduce the specified river dimensions; these are not the user original river files.",
+  "health": {
+    "status": "ok",
+    "specialists": [
+      {
+        "name": "vqa_caption_v1",
+        "status": "ok",
+        "model_loaded": false,
+        "module": "models.vqa_caption.model",
+        "last_executed_mode": null,
+        "busy": false
+      },
+      {
+        "name": "grounding_v1",
+        "status": "ok",
+        "model_loaded": false,
+        "module": "models.grounding.model",
+        "last_executed_mode": null,
+        "busy": false
+      },
+      {
+        "name": "change_vqa_v1",
+        "status": "ok",
+        "model_loaded": false,
+        "module": "models.change_vqa.model",
+        "last_executed_mode": null,
+        "busy": false
+      },
+      {
+        "name": "fusion_optical_sar_v1",
+        "status": "ok",
+        "model_loaded": false,
+        "module": "models.fusion_optical_sar.model",
+        "last_executed_mode": null,
+        "busy": false
+      },
+      {
+        "name": "measurement_v1",
+        "status": "available_in_process",
+        "model_loaded": null
+      },
+      {
+        "name": "change_mask_v1",
+        "status": "ok",
+        "model_loaded": null,
+        "mode": "deterministic_change_mask_fallback"
+      }
+    ],
+    "all_specialists_ready": true,
+    "serving": "http",
+    "adapter_ready": true,
+    "vilt_enabled": true,
+    "checkpoints": {
+      "vilt_lora": true,
+      "grounding_dino": true,
+      "change_siamese": true,
+      "fusion_cross_attention": true
+    }
+  },
+  "config": {
+    "max_uploads": 20,
+    "max_upload_mb": 128,
+    "max_query_chars": 8000,
+    "max_multidate": 20
+  },
+  "benchmark_api_status": 200,
+  "river_inspection": {
+    "scenario": "BITEMPORAL_PAIR",
+    "images": [
+      {
+        "id": "img1",
+        "modality": "optical",
+        "bands": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "filename": "river_before_fixture.tif",
+        "sha256": "ca92a42cda19ff95afd2c41f0bc017f091e4c650755991af539ec3a0d0b7dd13",
+        "source_type": "operational_geospatial",
+        "georeferenced": true,
+        "raster_metadata": {
+          "format": "GTiff",
+          "width": 1600,
+          "height": 710,
+          "band_count": 3,
+          "band_descriptions": [
+            "Red",
+            "Green",
+            "Blue"
+          ],
+          "dtype": [
+            "float32",
+            "float32",
+            "float32"
+          ],
+          "nodata": -9999.0,
+          "bounds": [
+            77.0,
+            12.0,
+            77.16,
+            12.071
+          ],
+          "pixel_resolution": [
+            9.999999999999786e-05,
+            9.999999999999963e-05
+          ],
+          "scales": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "offsets": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale_offset_applied": true,
+          "tags": {
+            "source": "acceptance fixture",
+            "AREA_OR_POINT": "Area"
+          },
+          "band_tags": [
+            {
+              "provenance": "channel 1"
+            },
+            {
+              "provenance": "channel 2"
+            },
+            {
+              "provenance": "channel 3"
+            }
+          ],
+          "color_interpretation": [
+            "gray",
+            "undefined",
+            "undefined"
+          ],
+          "encoded_acquisition_date": null
+        },
+        "crs": "EPSG:4326",
+        "transform": [
+          9.999999999999786e-05,
+          0.0,
+          77.0,
+          0.0,
+          -9.999999999999963e-05,
+          12.071
+        ],
+        "resolution_m": null,
+        "shape": [
+          710,
+          1600
+        ],
+        "date": "2024-01-01",
+        "time_index": null,
+        "date_source": "user_declared",
+        "sar_units": "unknown",
+        "calibration_state": "unknown",
+        "coregistered": false,
+        "benchmark_source": null,
+        "quality": {
+          "score": 0.9898,
+          "valid_fraction": 1.0,
+          "bands": [
+            {
+              "band": "red",
+              "valid_fraction": 1.0,
+              "p02": 0.02025046955794096,
+              "p98": 0.9798925673961639,
+              "low_contrast": false
+            },
+            {
+              "band": "green",
+              "valid_fraction": 1.0,
+              "p02": 0.019745777584612368,
+              "p98": 0.9799685490131378,
+              "low_contrast": false
+            },
+            {
+              "band": "blue",
+              "valid_fraction": 1.0,
+              "p02": 0.019796011596918107,
+              "p98": 0.9797604191303253,
+              "low_contrast": false
+            }
+          ],
+          "cloud_proxy_fraction": 0.014587147887323943,
+          "saturation_proxy_fraction": 0.0,
+          "warnings": [],
+          "semantics": "Heuristic usability score; cloud proxy can confuse snow or bright roofs."
+        },
+        "suggested_modality": "OPTICAL",
+        "grid_metadata_valid": true,
+        "original_metadata": {
+          "shape": [
+            710,
+            1600
+          ],
+          "crs": "EPSG:4326",
+          "transform": [
+            9.999999999999786e-05,
+            0.0,
+            77.0,
+            0.0,
+            -9.999999999999963e-05,
+            12.071
+          ],
+          "bands": [
+            "red",
+            "green",
+            "blue"
+          ],
+          "raster_metadata": {
+            "format": "GTiff",
+            "width": 1600,
+            "height": 710,
+            "band_count": 3,
+            "band_descriptions": [
+              "Red",
+              "Green",
+              "Blue"
+            ],
+            "dtype": [
+              "float32",
+              "float32",
+              "float32"
+            ],
+            "nodata": -9999.0,
+            "bounds": [
+              77.0,
+              12.0,
+              77.16,
+              12.071
+            ],
+            "pixel_resolution": [
+              9.999999999999786e-05,
+              9.999999999999963e-05
+            ],
+            "scales": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "offsets": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale_offset_applied": true,
+            "tags": {
+              "source": "acceptance fixture",
+              "AREA_OR_POINT": "Area"
+            },
+            "band_tags": [
+              {
+                "provenance": "channel 1"
+              },
+              {
+                "provenance": "channel 2"
+              },
+              {
+                "provenance": "channel 3"
+              }
+            ],
+            "color_interpretation": [
+              "gray",
+              "undefined",
+              "undefined"
+            ],
+            "encoded_acquisition_date": null
+          }
+        },
+        "original_width": 1600,
+        "original_height": 710,
+        "original_crs": "EPSG:4326",
+        "original_transform": [
+          9.999999999999786e-05,
+          0.0,
+          77.0,
+          0.0,
+          -9.999999999999963e-05,
+          12.071
+        ],
+        "visual_only": false,
+        "geospatial_measurements_allowed": true,
+        "sar_calibration_status": "UNKNOWN",
+        "warnings": [],
+        "preprocessing_steps": [],
+        "was_resampled": false,
+        "was_reprojected": false,
+        "was_band_reordered": false,
+        "was_coregistered": false
+      },
+      {
+        "id": "img2",
+        "modality": "optical",
+        "bands": [
+          "red",
+          "green",
+          "blue"
+        ],
+        "filename": "river_after_fixture.tif",
+        "sha256": "6293dd41333de3d78ef98daf55cbfe792fc4e1da0c375eae59dbedcceec08a7f",
+        "source_type": "operational_geospatial",
+        "georeferenced": true,
+        "raster_metadata": {
+          "format": "GTiff",
+          "width": 1600,
+          "height": 710,
+          "band_count": 3,
+          "band_descriptions": [
+            "Red",
+            "Green",
+            "Blue"
+          ],
+          "dtype": [
+            "float32",
+            "float32",
+            "float32"
+          ],
+          "nodata": -9999.0,
+          "bounds": [
+            77.0,
+            12.0,
+            77.16,
+            12.071
+          ],
+          "pixel_resolution": [
+            9.999999999999786e-05,
+            9.999999999999963e-05
+          ],
+          "scales": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "offsets": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "scale_offset_applied": true,
+          "tags": {
+            "source": "acceptance fixture",
+            "AREA_OR_POINT": "Area"
+          },
+          "band_tags": [
+            {
+              "provenance": "channel 1"
+            },
+            {
+              "provenance": "channel 2"
+            },
+            {
+              "provenance": "channel 3"
+            }
+          ],
+          "color_interpretation": [
+            "gray",
+            "undefined",
+            "undefined"
+          ],
+          "encoded_acquisition_date": null
+        },
+        "crs": "EPSG:4326",
+        "transform": [
+          9.999999999999786e-05,
+          0.0,
+          77.0,
+          0.0,
+          -9.999999999999963e-05,
+          12.071
+        ],
+        "resolution_m": null,
+        "shape": [
+          710,
+          1600
+        ],
+        "date": "2024-02-01",
+        "time_index": null,
+        "date_source": "user_declared",
+        "sar_units": "unknown",
+        "calibration_state": "unknown",
+        "coregistered": false,
+        "benchmark_source": null,
+        "quality": {
+          "score": 0.99,
+          "valid_fraction": 1.0,
+          "bands": [
+            {
+              "band": "red",
+              "valid_fraction": 1.0,
+              "p02": 0.020239442512392996,
+              "p98": 0.9798933351039887,
+              "low_contrast": false
+            },
+            {
+              "band": "green",
+              "valid_fraction": 1.0,
+              "p02": 0.019752573445439337,
+              "p98": 0.9799647951126098,
+              "low_contrast": false
+            },
+            {
+              "band": "blue",
+              "valid_fraction": 1.0,
+              "p02": 0.0197824190557003,
+              "p98": 0.9797542202472687,
+              "low_contrast": false
+            }
+          ],
+          "cloud_proxy_fraction": 0.014354753521126761,
+          "saturation_proxy_fraction": 0.0,
+          "warnings": [],
+          "semantics": "Heuristic usability score; cloud proxy can confuse snow or bright roofs."
+        },
+        "suggested_modality": "OPTICAL",
+        "grid_metadata_valid": true,
+        "original_metadata": {
+          "shape": [
+            709,
+            1600
+          ],
+          "crs": "EPSG:4326",
+          "transform": [
+            9.999999999999786e-05,
+            0.0,
+            77.0,
+            0.0,
+            -0.00010014104372355393,
+            12.071
+          ],
+          "bands": [
+            "red",
+            "green",
+            "blue"
+          ],
+          "raster_metadata": {
+            "format": "GTiff",
+            "width": 1600,
+            "height": 709,
+            "band_count": 3,
+            "band_descriptions": [
+              "Red",
+              "Green",
+              "Blue"
+            ],
+            "dtype": [
+              "float32",
+              "float32",
+              "float32"
+            ],
+            "nodata": -9999.0,
+            "bounds": [
+              77.0,
+              12.0,
+              77.16,
+              12.071
+            ],
+            "pixel_resolution": [
+              9.999999999999786e-05,
+              0.00010014104372355393
+            ],
+            "scales": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "offsets": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "scale_offset_applied": true,
+            "tags": {
+              "source": "acceptance fixture",
+              "AREA_OR_POINT": "Area"
+            },
+            "band_tags": [
+              {
+                "provenance": "channel 1"
+              },
+              {
+                "provenance": "channel 2"
+              },
+              {
+                "provenance": "channel 3"
+              }
+            ],
+            "color_interpretation": [
+              "gray",
+              "undefined",
+              "undefined"
+            ],
+            "encoded_acquisition_date": null
+          }
+        },
+        "original_width": 1600,
+        "original_height": 709,
+        "original_crs": "EPSG:4326",
+        "original_transform": [
+          9.999999999999786e-05,
+          0.0,
+          77.0,
+          0.0,
+          -0.00010014104372355393,
+          12.071
+        ],
+        "visual_only": false,
+        "geospatial_measurements_allowed": true,
+        "sar_calibration_status": "UNKNOWN",
+        "warnings": [],
+        "preprocessing_steps": [
+          {
+            "image_id": "img2",
+            "code": "RESAMPLED_TO_REFERENCE_GRID",
+            "message": "Normalized 1600\u00d7709 \u2192 1600\u00d7710; band metadata preserved.",
+            "reference_image": "img1",
+            "original_crs": "EPSG:4326",
+            "target_crs": "EPSG:4326",
+            "original_shape": [
+              709,
+              1600
+            ],
+            "output_shape": [
+              710,
+              1600
+            ],
+            "output_transform": [
+              9.999999999999786e-05,
+              0.0,
+              77.0,
+              0.0,
+              -9.999999999999963e-05,
+              12.071
+            ],
+            "resampling": "nearest",
+            "issues_detected": [
+              "DIMENSION_MISMATCH",
+              "TRANSFORM_OR_RESOLUTION_MISMATCH"
+            ]
+          }
+        ],
+        "was_resampled": true,
+        "was_reprojected": false,
+        "was_band_reordered": false,
+        "was_coregistered": false
+      }
+    ],
+    "metadata": {
+      "crs": "EPSG:4326",
+      "resolution_m": null,
+      "acquisition_dates": [
+        "2024-01-01",
+        "2024-02-01"
+      ]
+    },
+    "validation_status": "READY_WITH_PREPROCESSING",
+    "validation_notes": "Formats, bands and spatial grids verified",
+    "validation": {
+      "status": "READY_WITH_PREPROCESSING",
+      "alignment": [
+        {
+          "overlap_valid_fraction": 1.0,
+          "estimated_shift_pixels": {
+            "x": 0,
+            "y": 0
+          },
+          "score": 0.4056821505833177,
+          "method": "Coarse gradient-magnitude phase correlation; translation only, not a registration certificate.",
+          "cross_sensor": false,
+          "peak_to_sidelobe_ratio": 67.83597720260704,
+          "warning": null,
+          "alignment_class": "GOOD"
+        }
+      ],
+      "preprocessing_steps": [
+        {
+          "image_id": "img2",
+          "code": "RESAMPLED_TO_REFERENCE_GRID",
+          "message": "Normalized 1600\u00d7709 \u2192 1600\u00d7710; band metadata preserved.",
+          "reference_image": "img1",
+          "original_crs": "EPSG:4326",
+          "target_crs": "EPSG:4326",
+          "original_shape": [
+            709,
+            1600
+          ],
+          "output_shape": [
+            710,
+            1600
+          ],
+          "output_transform": [
+            9.999999999999786e-05,
+            0.0,
+            77.0,
+            0.0,
+            -9.999999999999963e-05,
+            12.071
+          ],
+          "resampling": "nearest",
+          "issues_detected": [
+            "DIMENSION_MISMATCH",
+            "TRANSFORM_OR_RESOLUTION_MISMATCH"
+          ]
+        }
+      ],
+      "issues_detected": [
+        "DIMENSION_MISMATCH",
+        "TRANSFORM_OR_RESOLUTION_MISMATCH"
+      ],
+      "actions_taken": [
+        {
+          "image_id": "img2",
+          "code": "RESAMPLED_TO_REFERENCE_GRID",
+          "message": "Normalized 1600\u00d7709 \u2192 1600\u00d7710; band metadata preserved.",
+          "reference_image": "img1",
+          "original_crs": "EPSG:4326",
+          "target_crs": "EPSG:4326",
+          "original_shape": [
+            709,
+            1600
+          ],
+          "output_shape": [
+            710,
+            1600
+          ],
+          "output_transform": [
+            9.999999999999786e-05,
+            0.0,
+            77.0,
+            0.0,
+            -9.999999999999963e-05,
+            12.071
+          ],
+          "resampling": "nearest",
+          "issues_detected": [
+            "DIMENSION_MISMATCH",
+            "TRANSFORM_OR_RESOLUTION_MISMATCH"
+          ]
+        }
+      ],
+      "warnings": [],
+      "blocking_errors": [],
+      "has_limitations": false,
+      "unavailable_tasks": [],
+      "capabilities": {
+        "visual_analysis": true,
+        "pixel_measurements": true,
+        "physical_area": true
+      },
+      "reasons": [],
+      "input_quality": 0.9898
+    }
+  },
+  "river_job": {
+    "job_id": "8f799a48590341f684627f04b1037b6f",
+    "status": "READY_WITH_PREPROCESSING",
+    "decision": {
+      "status": "LOW_TRUST",
+      "code": "LOW_CONFIDENCE",
+      "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+      "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+    },
+    "specialists": [
+      [
+        "change_vqa_v1",
+        "complete"
+      ],
+      [
+        "change_mask_v1",
+        "complete"
+      ]
+    ]
+  },
+  "roi_followup": {
+    "job_id": "673c3bbcd7d74f07aa2e1902ba2f06d8",
+    "shape": [
+      90,
+      90
+    ]
+  },
+  "ordinary_png": {
+    "job_id": "53a25baaf75e45ec8756a97343f7749b",
+    "status": "READY_WITH_LIMITATIONS"
+  },
+  "demos": {
+    "vqa": {
+      "job_id": "f186fe8afee64b19943108a0bba38999",
+      "task": "VQA",
+      "decision": "ANSWERED"
+    },
+    "grounding": {
+      "job_id": "8d545aeb3a2f4a24b5bcfef7b6f98e3c",
+      "task": "GROUNDING",
+      "decision": "ANSWERED"
+    },
+    "change": {
+      "job_id": "3146d8660d6f4a438841f959c34870f3",
+      "task": "CHANGE_VQA",
+      "decision": "ANSWERED"
+    },
+    "fusion": {
+      "job_id": "1d9b4102a3824e8798228ff014d48826",
+      "task": "FUSION_ANALYSIS",
+      "decision": "ANSWERED"
+    }
+  },
+  "benchmark_artifact_hashes_unchanged": true,
+  "status": "PASS"
+}

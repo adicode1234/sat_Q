@@ -1,0 +1,88 @@
+{
+  "at": "2026-09-12T12:09:14.634749+00:00",
+  "frontend": {
+    "tsc": 0,
+    "build": 0,
+    "modules": 1573
+  },
+  "pytest_initial": {
+    "passed": 21,
+    "errors": 1,
+    "reason": "sandbox denied pytest temporary directory; elevated rerun pending"
+  },
+  "docker": {
+    "services_running": [
+      "frontend",
+      "gateway",
+      "vqa",
+      "grounding",
+      "change",
+      "change-mask",
+      "fusion"
+    ],
+    "healthchecks_configured": false
+  },
+  "demos": [
+    {
+      "demo": "vqa",
+      "status": "passed",
+      "task": "VQA",
+      "trace_events": 11,
+      "modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+      ],
+      "report_download": "passed",
+      "preview_download": "passed",
+      "trust": 0.5218
+    },
+    {
+      "demo": "grounding",
+      "status": "passed",
+      "task": "GROUNDING",
+      "trace_events": 15,
+      "modes": [
+        "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary",
+        "pretrained_grounding_dino_tiny"
+      ],
+      "report_download": "passed",
+      "preview_download": "passed",
+      "trust": 0.4905
+    },
+    {
+      "demo": "change",
+      "status": "passed",
+      "task": "CHANGE_VQA",
+      "trace_events": 11,
+      "modes": [
+        "cdvqa_tiny_siamese_vqa + deterministic_candidate_mask"
+      ],
+      "report_download": "passed",
+      "preview_download": "passed",
+      "trust": 0.3887
+    },
+    {
+      "demo": "fusion",
+      "status": "passed",
+      "task": "FUSION_ANALYSIS",
+      "trace_events": 12,
+      "modes": [
+        "adapted_tiny_rgb_mlp + optical_sar_proxy_fusion + synthetic_trained_cross_attention"
+      ],
+      "report_download": "passed",
+      "preview_download": "passed",
+      "trust": 0.5204
+    }
+  ],
+  "footprint": {
+    "checkpoints_bytes": 1162267817,
+    "data_bytes": 199711611,
+    "docker_images": "9.788 GB shared total",
+    "build_cache": "12.41 GB"
+  },
+  "missing": [
+    "requirements.txt",
+    "start.ps1",
+    "verify-docker.ps1"
+  ],
+  "git": "no repository metadata"
+}

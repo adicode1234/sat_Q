@@ -1,0 +1,53 @@
+[
+  {
+    "kind": "optical",
+    "job_id": "b09e924b74a8439eb3c439152f06440a",
+    "task": "WATER_ANALYSIS",
+    "mode": "sen1floods11_optical_water_mlp",
+    "trust": 0.6,
+    "decision": {
+      "status": "LOW_TRUST",
+      "code": "LOW_CONFIDENCE",
+      "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+      "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+    },
+    "report": "/reports/b09e924b74a8439eb3c439152f06440a.json",
+    "preprocessing": [
+      "REFLECTANCE_CONVERSION",
+      "NORMALIZED_DERIVATIVE"
+    ]
+  },
+  {
+    "kind": "sar",
+    "job_id": "9f7d0810aeec429baaf9e91bff0d4896",
+    "task": "WATER_ANALYSIS",
+    "mode": "sen1floods11_sar_water_mlp",
+    "trust": 0.8068,
+    "decision": {
+      "status": "ANSWERED",
+      "code": null,
+      "reason": "Candidate findings and their independently checkable evidence are available.",
+      "needed": null
+    },
+    "report": "/reports/9f7d0810aeec429baaf9e91bff0d4896.json",
+    "preprocessing": []
+  },
+  {
+    "kind": "joint",
+    "job_id": "f9a8d7f512f14bf09c198031825d6eae",
+    "task": "WATER_ANALYSIS",
+    "mode": "sen1floods11_joint_water_mlp",
+    "trust": 0.6,
+    "decision": {
+      "status": "LOW_TRUST",
+      "code": "LOW_CONFIDENCE",
+      "reason": "Evidence is weak or conflicting; candidate results must not be treated as a definitive answer.",
+      "needed": "Check alignment, calibration and input bands; compare with labeled reference data."
+    },
+    "report": "/reports/f9a8d7f512f14bf09c198031825d6eae.json",
+    "preprocessing": [
+      "REFLECTANCE_CONVERSION",
+      "NORMALIZED_DERIVATIVE"
+    ]
+  }
+]

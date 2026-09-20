@@ -1,0 +1,134 @@
+{
+  "generated_at": "2026-09-12T17:14:35Z",
+  "image": "data\\vrsbench\\P0003_0002.png",
+  "dataset": "VRSBench",
+  "rows": [
+    {
+      "key": "water_a",
+      "query": "Locate the water.",
+      "job_id": "e8be52a837054a8494b82081d635ccd2",
+      "status": "complete",
+      "task": "GROUNDING",
+      "decision": "LOW_TRUST",
+      "boxes": [
+        {
+          "box": [
+            279.0,
+            23.0,
+            512.0,
+            512.0
+          ],
+          "label": "the water",
+          "score": 0.3636532425880432
+        }
+      ]
+    },
+    {
+      "key": "water_b",
+      "query": "Where is the water body?",
+      "job_id": "16fcd68ae96a44979511536ec9572aa7",
+      "status": "complete",
+      "task": "GROUNDING",
+      "decision": "LOW_TRUST",
+      "boxes": [
+        {
+          "box": [
+            274.0,
+            23.0,
+            512.0,
+            512.0
+          ],
+          "label": "where water",
+          "score": 0.362382173538208
+        }
+      ]
+    },
+    {
+      "key": "water_c",
+      "query": "Highlight the surface water.",
+      "job_id": "4b7f0011996b43ffb998b04bff6b0623",
+      "status": "complete",
+      "task": "GROUNDING",
+      "decision": "LOW_TRUST",
+      "boxes": [
+        {
+          "box": [
+            280.0,
+            23.0,
+            512.0,
+            512.0
+          ],
+          "label": "the surface water",
+          "score": 0.35574209690093994
+        }
+      ]
+    },
+    {
+      "key": "building",
+      "query": "Locate the buildings.",
+      "job_id": "9fc3c9d64c0c4f3a838e844a4f2faa17",
+      "status": "complete",
+      "task": "GROUNDING",
+      "decision": "LOW_TRUST",
+      "boxes": [
+        {
+          "box": [
+            85.0,
+            17.0,
+            236.0,
+            122.0
+          ],
+          "label": "the buildings",
+          "score": 0.4053196907043457
+        },
+        {
+          "box": [
+            0.0,
+            192.0,
+            325.0,
+            512.0
+          ],
+          "label": "the buildings",
+          "score": 0.37291815876960754
+        }
+      ]
+    },
+    {
+      "key": "road",
+      "query": "Locate the road.",
+      "job_id": "3604599327f249aab5fd63d3b2beb9f6",
+      "status": "complete",
+      "task": "GROUNDING",
+      "decision": "LOW_TRUST",
+      "boxes": [
+        {
+          "box": [
+            278.0,
+            23.0,
+            512.0,
+            512.0
+          ],
+          "label": "the road",
+          "score": 0.6908441781997681
+        }
+      ]
+    },
+    {
+      "key": "forest",
+      "query": "Locate the forest.",
+      "job_id": "1cb90e073f324e898c5bd4f46007b643",
+      "status": "complete",
+      "task": "GROUNDING",
+      "decision": "LOW_TRUST",
+      "boxes": []
+    }
+  ],
+  "water_paraphrase_mean_iou": 0.9831632223704933,
+  "water_vs_other_iou": {
+    "building": 0.0,
+    "road": 0.9957264957264957
+  },
+  "all_jobs_complete": true,
+  "query_sensitive": true,
+  "conclusion": "Grounding is text-conditioned: semantically different prompts produced different spatial predictions."
+}

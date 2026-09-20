@@ -1,0 +1,864 @@
+{
+  "provenance": {
+    "dataset": "SEN12MS-CR",
+    "mirror": "Hermanni/sen12mscr",
+    "original_source": "mediaTUM 1554803",
+    "season": "spring",
+    "scene": "1",
+    "patch": "p100",
+    "s1_shape": [
+      2,
+      256,
+      256
+    ],
+    "s2_shape": [
+      13,
+      256,
+      256
+    ],
+    "note": "Real Sentinel-1/Sentinel-2 paired sample. Mirror row does not expose original CRS/geotransform."
+  },
+  "job": {
+    "status": "complete",
+    "events": [
+      {
+        "step": 1,
+        "action": "validate_inputs",
+        "at": "2026-09-12T17:03:18.744207+00:00",
+        "status": "complete",
+        "duration_s": 0.000119,
+        "elapsed_s": 0.000119,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "result": "Checking format, bands, modality and spatial grids"
+      },
+      {
+        "step": 2,
+        "action": "validation_complete",
+        "at": "2026-09-12T17:03:19.303465+00:00",
+        "status": "complete",
+        "duration_s": 0.559258,
+        "elapsed_s": 0.559377,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "result": "READY_WITH_LIMITATIONS",
+        "notes": "Co-registration is user-declared; spatial metadata is unavailable; No CRS for at least one image; no geographic coordinates will be claimed; Different sensors/seasons may have unrelated edges; review manually.",
+        "scenario": "CROSS_MODAL_PAIR"
+      },
+      {
+        "step": 3,
+        "action": "classify_intent",
+        "at": "2026-09-12T17:03:19.314467+00:00",
+        "status": "complete",
+        "duration_s": 0.011004,
+        "elapsed_s": 0.570381,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "result": "FUSION_ANALYSIS",
+        "classifier": "registry_keyword_hybrid_v1"
+      },
+      {
+        "step": 4,
+        "action": "select_model",
+        "at": "2026-09-12T17:03:19.314691+00:00",
+        "status": "complete",
+        "duration_s": 0.000226,
+        "elapsed_s": 0.570607,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "model": "fusion_optical_sar_v1",
+        "reason": "Registry supports CROSS_MODAL_PAIR and FUSION_ANALYSIS"
+      },
+      {
+        "step": 5,
+        "action": "execute",
+        "at": "2026-09-12T17:03:19.314748+00:00",
+        "status": "complete",
+        "duration_s": 5.7e-05,
+        "elapsed_s": 0.570664,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "model": "fusion_optical_sar_v1",
+        "params": {}
+      },
+      {
+        "step": 6,
+        "action": "http_request",
+        "at": "2026-09-12T17:03:19.324453+00:00",
+        "status": "complete",
+        "duration_s": 0.009704,
+        "elapsed_s": 0.580368,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "model": "fusion_optical_sar_v1",
+        "endpoint": "http://fusion:8000/run"
+      },
+      {
+        "step": 7,
+        "action": "model_complete",
+        "at": "2026-09-12T17:03:20.101794+00:00",
+        "status": "complete",
+        "duration_s": 0.77734,
+        "elapsed_s": 1.357708,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "model": "fusion_optical_sar_v1",
+        "mode": "unsupported_rgb_input + optical_sar_proxy_fusion",
+        "result": "This specialist requires named red, green and blue optical bands. Available physical measurements appear in the evidence panel; no RGB land-cover estimate is made. Optical and SAR evidence are evaluated separately before consensus. "
+      },
+      {
+        "step": 8,
+        "action": "symbolic_verification",
+        "at": "2026-09-12T17:03:20.101874+00:00",
+        "status": "complete",
+        "duration_s": 8.4e-05,
+        "elapsed_s": 1.357792,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "result": "Independently checking every structured land-cover/change claim"
+      },
+      {
+        "step": 9,
+        "action": "verification_complete",
+        "at": "2026-09-12T17:03:20.103214+00:00",
+        "status": "complete",
+        "duration_s": 0.001339,
+        "elapsed_s": 1.359131,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "result": {
+          "agreement": null,
+          "coverage": 0.0,
+          "flags": []
+        }
+      },
+      {
+        "step": 10,
+        "action": "consensus",
+        "at": "2026-09-12T17:03:20.103259+00:00",
+        "status": "complete",
+        "duration_s": 4.6e-05,
+        "elapsed_s": 1.359177,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "result": "Combining evidence and retaining unresolved contradictions"
+      },
+      {
+        "step": 11,
+        "action": "answer_gate",
+        "at": "2026-09-12T17:03:20.103390+00:00",
+        "status": "INSUFFICIENT_EVIDENCE",
+        "duration_s": 0.000131,
+        "elapsed_s": 1.359308,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "result": {
+          "status": "INSUFFICIENT_EVIDENCE",
+          "code": "INSUFFICIENT_EVIDENCE",
+          "reason": "No supported neural answer or independent claim evidence is available.",
+          "needed": "Provide the required bands/calibration or a supported model. Available physical measurements remain below."
+        }
+      },
+      {
+        "step": 12,
+        "action": "spatial_measurement",
+        "at": "2026-09-12T17:03:20.103417+00:00",
+        "status": "complete",
+        "duration_s": 2.7e-05,
+        "elapsed_s": 1.359335,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "result": "Creating full-resolution region measurements and georeferenced exports"
+      },
+      {
+        "step": 13,
+        "action": "report",
+        "at": "2026-09-12T17:03:20.103436+00:00",
+        "status": "complete",
+        "duration_s": 1.9e-05,
+        "elapsed_s": 1.359354,
+        "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+        "result": "Answer, evidence, trust breakdown and trace prepared"
+      }
+    ],
+    "created_at": "2026-09-12T17:03:18.735844+00:00",
+    "result": {
+      "answer": "No supported neural answer or independent claim evidence is available. Provide the required bands/calibration or a supported model. Available physical measurements remain below.",
+      "short_answer": null,
+      "overlay": null,
+      "flags": [],
+      "candidate_answer": "This specialist requires named red, green and blue optical bands. Available physical measurements appear in the evidence panel; no RGB land-cover estimate is made. Optical and SAR evidence are evaluated separately before consensus. ",
+      "query_id": "5c34325588204f95bb94cc41f7811bd2",
+      "query": "Compare the optical and SAR observations and report only evidence supported across the real Sentinel-1/Sentinel-2 pair.",
+      "parent_query_id": null,
+      "decision": {
+        "status": "INSUFFICIENT_EVIDENCE",
+        "code": "INSUFFICIENT_EVIDENCE",
+        "reason": "No supported neural answer or independent claim evidence is available.",
+        "needed": "Provide the required bands/calibration or a supported model. Available physical measurements remain below."
+      },
+      "consensus": "insufficient evidence",
+      "trust_explanation": "Trust reflects 0% independently checkable claim coverage, 100% input usability, and insufficient evidence. Scores are uncalibrated.",
+      "provenance": {
+        "processing_version": "2.0",
+        "processing_sha256": "44b7e72847270a3fbd0514e3d0a916672a69e192a0fbd4648b4b7c37ad8e9b48",
+        "checkpoint_artifacts": {
+          "rgb_adapter.npz": "d15a8c8c2add96db85c799764672b3fbb97a68ec6da503fb2434f151d121fbe1",
+          "vilt_lora/adapter_model.safetensors": "af9791559d1dc599dd4d3212e1d61371f8e841e1f8dd2005948127823ab36685",
+          "change_siamese/weights.pt": "186cd2d10fc0abad25f306cc8279cb9c5f81cacd4839284f4ce286190138bbcf",
+          "fusion_cross_attention/weights.pt": "2068e3d23356fef8b0a3f3101ddd7537428e8d1392108820017da6f112f134e2"
+        },
+        "inputs": [
+          {
+            "id": "img1",
+            "sha256": "fffcd8ed0a173558db09a3f418950de9479201f7c4975904240db2e274a59c6f",
+            "source_type": "benchmark"
+          },
+          {
+            "id": "img2",
+            "sha256": "1f6e4bf8c2723c7c7b32dbec165bec634f9bdc55952b1d5539af6770d6fda17c",
+            "source_type": "benchmark"
+          }
+        ],
+        "executed_models": [
+          {
+            "model": "fusion_optical_sar_v1",
+            "mode": "unsupported_rgb_input + optical_sar_proxy_fusion",
+            "status": "complete"
+          }
+        ],
+        "seed": null,
+        "seed_note": "Inference uses eval mode; no randomized inference seed is set.",
+        "validation": {
+          "status": "READY_WITH_LIMITATIONS",
+          "alignment": [
+            {
+              "overlap_valid_fraction": 1.0,
+              "estimated_shift_pixels": {
+                "x": 33,
+                "y": -40
+              },
+              "score": 0.01711290860059133,
+              "method": "Coarse gradient-magnitude phase correlation; translation only, not a registration certificate.",
+              "cross_sensor": true,
+              "warning": "Different sensors/seasons may have unrelated edges; review manually."
+            }
+          ],
+          "reasons": [
+            {
+              "code": "INPUT_LIMITATION",
+              "message": "Co-registration is user-declared; spatial metadata is unavailable"
+            },
+            {
+              "code": "MISSING_METADATA",
+              "message": "No CRS for at least one image; no geographic coordinates will be claimed"
+            },
+            {
+              "code": "INPUT_LIMITATION",
+              "message": "Different sensors/seasons may have unrelated edges; review manually."
+            }
+          ],
+          "input_quality": 1.0
+        },
+        "rasterio_version": "1.5.1"
+      },
+      "timings": {
+        "validation_s": 0.5593613409982936,
+        "inference_s": 0.7852012109979114,
+        "verification_s": 0.001337285000772681,
+        "total_s": 1.359348725000018,
+        "report_generation_s": 0.44066733500221744
+      },
+      "task": "FUSION_ANALYSIS",
+      "scenario": "CROSS_MODAL_PAIR",
+      "trust_score": 0.0,
+      "confidence_breakdown": {
+        "neural": null,
+        "symbolic": null,
+        "coverage": 0.0,
+        "input_quality": 1.0,
+        "consensus": "insufficient evidence",
+        "final_trust": 0.0
+      },
+      "verification": {
+        "trust_score": 0.0,
+        "neural_confidence": 0.0,
+        "symbolic_agreement": null,
+        "verification_coverage": 0.0,
+        "flags": [],
+        "checks": [],
+        "physical_statistics": {
+          "img1": {
+            "coherence": {
+              "unavailable": "Requires complex SLC pair; intensity alone cannot provide interferometric coherence"
+            }
+          },
+          "img2": {
+            "SAR": {
+              "mean_db": -11.134507594215393,
+              "std_db": 2.0056372422686106,
+              "dark_fraction": 0.00213623046875,
+              "interpretation": "Low backscatter supports smooth surfaces; not unique to water"
+            },
+            "coherence": {
+              "unavailable": "Requires complex SLC pair; intensity alone cannot provide interferometric coherence"
+            }
+          }
+        },
+        "method": "0.4 \u00d7 specialist confidence + 0.6 \u00d7 symbolic agreement \u00d7 evidence coverage; uncalibrated demo score; multiplied by heuristic input usability; not calibrated"
+      },
+      "specialists": [
+        {
+          "status": "complete",
+          "task": "FUSION_ANALYSIS",
+          "model": "fusion_optical_sar_v1",
+          "answer": "This specialist requires named red, green and blue optical bands. Available physical measurements appear in the evidence panel; no RGB land-cover estimate is made. Optical and SAR evidence are evaluated separately before consensus. ",
+          "mode": "unsupported_rgb_input + optical_sar_proxy_fusion",
+          "neural_confidence": 0.0,
+          "confidence": {
+            "value": 0.0,
+            "semantics": "uncalibrated bounded model score; deterministic modes use zero neural score",
+            "calibrated": false
+          },
+          "claims": [],
+          "limitations": [],
+          "evidence": [],
+          "spatial_outputs": {
+            "overlay": null,
+            "heatmap": null
+          },
+          "metadata": {
+            "version": "1.0"
+          },
+          "timing": {
+            "inference_s": 0.7852012109979114
+          },
+          "errors": [],
+          "overlay": null,
+          "cloud_proxy": null,
+          "sar_water_proxy": 0.00213623046875
+        }
+      ],
+      "input": {
+        "scenario": "CROSS_MODAL_PAIR",
+        "images": [
+          {
+            "id": "img1",
+            "modality": "optical",
+            "bands": [
+              "b01",
+              "b02",
+              "b03",
+              "b04",
+              "b05",
+              "b06",
+              "b07",
+              "b08",
+              "b8a",
+              "b09",
+              "b10",
+              "b11",
+              "b12"
+            ],
+            "filename": "sen12mscr_s2_real_sensor_proxy.tif",
+            "sha256": "fffcd8ed0a173558db09a3f418950de9479201f7c4975904240db2e274a59c6f",
+            "source_type": "benchmark",
+            "georeferenced": false,
+            "raster_metadata": {
+              "format": "GTiff",
+              "width": 256,
+              "height": 256,
+              "band_count": 13,
+              "band_descriptions": [
+                "B01",
+                "B02",
+                "B03",
+                "B04",
+                "B05",
+                "B06",
+                "B07",
+                "B08",
+                "B8A",
+                "B09",
+                "B10",
+                "B11",
+                "B12"
+              ],
+              "dtype": [
+                "int16",
+                "int16",
+                "int16",
+                "int16",
+                "int16",
+                "int16",
+                "int16",
+                "int16",
+                "int16",
+                "int16",
+                "int16",
+                "int16",
+                "int16"
+              ],
+              "nodata": null,
+              "bounds": null,
+              "pixel_resolution": null,
+              "scales": [
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0
+              ],
+              "offsets": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "scale_offset_applied": true,
+              "tags": {
+                "coregistered_pair": "true",
+                "georeference_note": "Original CRS/geotransform not preserved in this mirror conversion",
+                "original_source": "mediaTUM 1554803",
+                "sensor": "Sentinel-2",
+                "source_dataset": "SEN12MS-CR",
+                "source_mirror": "Hugging Face Hermanni/sen12mscr"
+              },
+              "band_tags": [
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {},
+                {}
+              ],
+              "encoded_acquisition_date": null
+            },
+            "crs": null,
+            "transform": null,
+            "resolution_m": null,
+            "shape": [
+              256,
+              256
+            ],
+            "date": null,
+            "time_index": null,
+            "date_source": null,
+            "sar_units": "unknown",
+            "calibration_state": "unknown",
+            "benchmark_source": "SEN12MS-CR real Sentinel-2 proxy via Hugging Face; original mediaTUM 1554803",
+            "quality": {
+              "score": 1.0,
+              "valid_fraction": 1.0,
+              "bands": [
+                {
+                  "band": "b01",
+                  "valid_fraction": 1.0,
+                  "p02": 1124.0,
+                  "p98": 1662.0,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b02",
+                  "valid_fraction": 1.0,
+                  "p02": 836.0,
+                  "p98": 1698.0,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b03",
+                  "valid_fraction": 1.0,
+                  "p02": 795.0,
+                  "p98": 1766.0,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b04",
+                  "valid_fraction": 1.0,
+                  "p02": 454.0,
+                  "p98": 1873.2999999999956,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b05",
+                  "valid_fraction": 1.0,
+                  "p02": 863.0,
+                  "p98": 2068.0,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b06",
+                  "valid_fraction": 1.0,
+                  "p02": 1837.0,
+                  "p98": 3042.0,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b07",
+                  "valid_fraction": 1.0,
+                  "p02": 2202.0,
+                  "p98": 3648.2999999999956,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b08",
+                  "valid_fraction": 1.0,
+                  "p02": 1990.7,
+                  "p98": 3466.0,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b8a",
+                  "valid_fraction": 1.0,
+                  "p02": 2489.7,
+                  "p98": 4125.0,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b09",
+                  "valid_fraction": 1.0,
+                  "p02": 271.0,
+                  "p98": 386.0,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b10",
+                  "valid_fraction": 1.0,
+                  "p02": 8.0,
+                  "p98": 14.0,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b11",
+                  "valid_fraction": 1.0,
+                  "p02": 1558.0,
+                  "p98": 4172.0,
+                  "low_contrast": false
+                },
+                {
+                  "band": "b12",
+                  "valid_fraction": 1.0,
+                  "p02": 620.0,
+                  "p98": 2909.2999999999956,
+                  "low_contrast": false
+                }
+              ],
+              "cloud_proxy_fraction": null,
+              "saturation_proxy_fraction": null,
+              "warnings": [],
+              "semantics": "Heuristic usability score; cloud proxy can confuse snow or bright roofs."
+            },
+            "suggested_modality": "UNKNOWN"
+          },
+          {
+            "id": "img2",
+            "modality": "SAR",
+            "bands": [
+              "vv",
+              "vh"
+            ],
+            "filename": "sen12mscr_s1_real_sensor_proxy.tif",
+            "sha256": "1f6e4bf8c2723c7c7b32dbec165bec634f9bdc55952b1d5539af6770d6fda17c",
+            "source_type": "benchmark",
+            "georeferenced": false,
+            "raster_metadata": {
+              "format": "GTiff",
+              "width": 256,
+              "height": 256,
+              "band_count": 2,
+              "band_descriptions": [
+                "VV",
+                "VH"
+              ],
+              "dtype": [
+                "float32",
+                "float32"
+              ],
+              "nodata": null,
+              "bounds": null,
+              "pixel_resolution": null,
+              "scales": [
+                1.0,
+                1.0
+              ],
+              "offsets": [
+                0.0,
+                0.0
+              ],
+              "scale_offset_applied": true,
+              "tags": {
+                "coregistered_pair": "true",
+                "georeference_note": "Original CRS/geotransform not preserved in this mirror conversion",
+                "original_source": "mediaTUM 1554803",
+                "sar_units": "dB",
+                "sensor": "Sentinel-1",
+                "source_dataset": "SEN12MS-CR",
+                "source_mirror": "Hugging Face Hermanni/sen12mscr"
+              },
+              "band_tags": [
+                {},
+                {}
+              ],
+              "encoded_acquisition_date": null
+            },
+            "crs": null,
+            "transform": null,
+            "resolution_m": null,
+            "shape": [
+              256,
+              256
+            ],
+            "date": null,
+            "time_index": null,
+            "date_source": null,
+            "sar_units": "db",
+            "calibration_state": "user_declared_calibrated",
+            "benchmark_source": "SEN12MS-CR real Sentinel-1 proxy via Hugging Face; original mediaTUM 1554803",
+            "quality": {
+              "score": 1.0,
+              "valid_fraction": 1.0,
+              "bands": [
+                {
+                  "band": "vv",
+                  "valid_fraction": 1.0,
+                  "p02": -15.333677768707275,
+                  "p98": -7.0759529113769535,
+                  "low_contrast": false
+                },
+                {
+                  "band": "vh",
+                  "valid_fraction": 1.0,
+                  "p02": -21.519806098937988,
+                  "p98": -12.691512203216556,
+                  "low_contrast": false
+                }
+              ],
+              "cloud_proxy_fraction": null,
+              "saturation_proxy_fraction": null,
+              "warnings": [],
+              "semantics": "Heuristic usability score; cloud proxy can confuse snow or bright roofs."
+            },
+            "suggested_modality": "SAR"
+          }
+        ],
+        "metadata": {
+          "crs": null,
+          "resolution_m": null,
+          "acquisition_dates": [
+            null,
+            null
+          ]
+        },
+        "validation_status": "READY_WITH_LIMITATIONS",
+        "validation_notes": "Co-registration is user-declared; spatial metadata is unavailable; No CRS for at least one image; no geographic coordinates will be claimed; Different sensors/seasons may have unrelated edges; review manually.",
+        "validation": {
+          "status": "READY_WITH_LIMITATIONS",
+          "alignment": [
+            {
+              "overlap_valid_fraction": 1.0,
+              "estimated_shift_pixels": {
+                "x": 33,
+                "y": -40
+              },
+              "score": 0.01711290860059133,
+              "method": "Coarse gradient-magnitude phase correlation; translation only, not a registration certificate.",
+              "cross_sensor": true,
+              "warning": "Different sensors/seasons may have unrelated edges; review manually."
+            }
+          ],
+          "reasons": [
+            {
+              "code": "INPUT_LIMITATION",
+              "message": "Co-registration is user-declared; spatial metadata is unavailable"
+            },
+            {
+              "code": "MISSING_METADATA",
+              "message": "No CRS for at least one image; no geographic coordinates will be claimed"
+            },
+            {
+              "code": "INPUT_LIMITATION",
+              "message": "Different sensors/seasons may have unrelated edges; review manually."
+            }
+          ],
+          "input_quality": 1.0
+        }
+      },
+      "execution_trace": [
+        {
+          "step": 1,
+          "action": "validate_inputs",
+          "at": "2026-09-12T17:03:18.744207+00:00",
+          "status": "complete",
+          "duration_s": 0.000119,
+          "elapsed_s": 0.000119,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "result": "Checking format, bands, modality and spatial grids"
+        },
+        {
+          "step": 2,
+          "action": "validation_complete",
+          "at": "2026-09-12T17:03:19.303465+00:00",
+          "status": "complete",
+          "duration_s": 0.559258,
+          "elapsed_s": 0.559377,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "result": "READY_WITH_LIMITATIONS",
+          "notes": "Co-registration is user-declared; spatial metadata is unavailable; No CRS for at least one image; no geographic coordinates will be claimed; Different sensors/seasons may have unrelated edges; review manually.",
+          "scenario": "CROSS_MODAL_PAIR"
+        },
+        {
+          "step": 3,
+          "action": "classify_intent",
+          "at": "2026-09-12T17:03:19.314467+00:00",
+          "status": "complete",
+          "duration_s": 0.011004,
+          "elapsed_s": 0.570381,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "result": "FUSION_ANALYSIS",
+          "classifier": "registry_keyword_hybrid_v1"
+        },
+        {
+          "step": 4,
+          "action": "select_model",
+          "at": "2026-09-12T17:03:19.314691+00:00",
+          "status": "complete",
+          "duration_s": 0.000226,
+          "elapsed_s": 0.570607,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "model": "fusion_optical_sar_v1",
+          "reason": "Registry supports CROSS_MODAL_PAIR and FUSION_ANALYSIS"
+        },
+        {
+          "step": 5,
+          "action": "execute",
+          "at": "2026-09-12T17:03:19.314748+00:00",
+          "status": "complete",
+          "duration_s": 5.7e-05,
+          "elapsed_s": 0.570664,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "model": "fusion_optical_sar_v1",
+          "params": {}
+        },
+        {
+          "step": 6,
+          "action": "http_request",
+          "at": "2026-09-12T17:03:19.324453+00:00",
+          "status": "complete",
+          "duration_s": 0.009704,
+          "elapsed_s": 0.580368,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "model": "fusion_optical_sar_v1",
+          "endpoint": "http://fusion:8000/run"
+        },
+        {
+          "step": 7,
+          "action": "model_complete",
+          "at": "2026-09-12T17:03:20.101794+00:00",
+          "status": "complete",
+          "duration_s": 0.77734,
+          "elapsed_s": 1.357708,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "model": "fusion_optical_sar_v1",
+          "mode": "unsupported_rgb_input + optical_sar_proxy_fusion",
+          "result": "This specialist requires named red, green and blue optical bands. Available physical measurements appear in the evidence panel; no RGB land-cover estimate is made. Optical and SAR evidence are evaluated separately before consensus. "
+        },
+        {
+          "step": 8,
+          "action": "symbolic_verification",
+          "at": "2026-09-12T17:03:20.101874+00:00",
+          "status": "complete",
+          "duration_s": 8.4e-05,
+          "elapsed_s": 1.357792,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "result": "Independently checking every structured land-cover/change claim"
+        },
+        {
+          "step": 9,
+          "action": "verification_complete",
+          "at": "2026-09-12T17:03:20.103214+00:00",
+          "status": "complete",
+          "duration_s": 0.001339,
+          "elapsed_s": 1.359131,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "result": {
+            "agreement": null,
+            "coverage": 0.0,
+            "flags": []
+          }
+        },
+        {
+          "step": 10,
+          "action": "consensus",
+          "at": "2026-09-12T17:03:20.103259+00:00",
+          "status": "complete",
+          "duration_s": 4.6e-05,
+          "elapsed_s": 1.359177,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "result": "Combining evidence and retaining unresolved contradictions"
+        },
+        {
+          "step": 11,
+          "action": "answer_gate",
+          "at": "2026-09-12T17:03:20.103390+00:00",
+          "status": "INSUFFICIENT_EVIDENCE",
+          "duration_s": 0.000131,
+          "elapsed_s": 1.359308,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "result": {
+            "status": "INSUFFICIENT_EVIDENCE",
+            "code": "INSUFFICIENT_EVIDENCE",
+            "reason": "No supported neural answer or independent claim evidence is available.",
+            "needed": "Provide the required bands/calibration or a supported model. Available physical measurements remain below."
+          }
+        },
+        {
+          "step": 12,
+          "action": "spatial_measurement",
+          "at": "2026-09-12T17:03:20.103417+00:00",
+          "status": "complete",
+          "duration_s": 2.7e-05,
+          "elapsed_s": 1.359335,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "result": "Creating full-resolution region measurements and georeferenced exports"
+        },
+        {
+          "step": 13,
+          "action": "report",
+          "at": "2026-09-12T17:03:20.103436+00:00",
+          "status": "complete",
+          "duration_s": 1.9e-05,
+          "elapsed_s": 1.359354,
+          "analysis_id": "5c34325588204f95bb94cc41f7811bd2",
+          "result": "Answer, evidence, trust breakdown and trace prepared"
+        }
+      ],
+      "report_url": "/reports/5c34325588204f95bb94cc41f7811bd2.json",
+      "spatial_products": [],
+      "limitations": [
+        "Research demo; scores are uncalibrated and are not probabilities of correctness.",
+        "Grounding DINO is pretrained; a labeled coarse fallback is used when unavailable or no box passes threshold.",
+        "Optical/SAR cross-attention was trained on synthetic pairs only; change masks are deterministic.",
+        "The small CDVQA Siamese model saw only two training image pairs; its question-specific suggestions remain unverified.",
+        "Unstructured VQA suggestions are auxiliary and unverified."
+      ],
+      "previews": [
+        "/api/preview/5c34325588204f95bb94cc41f7811bd2/0",
+        "/api/preview/5c34325588204f95bb94cc41f7811bd2/1"
+      ],
+      "timestamp": "2026-09-12T17:03:20.655372+00:00",
+      "html_report_url": "/reports/5c34325588204f95bb94cc41f7811bd2.html"
+    }
+  }
+}

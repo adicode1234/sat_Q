@@ -1,0 +1,12 @@
+{
+  "title": "SatQuery AI · Mission workspace",
+  "button_count": 47,
+  "mode_button_matches": {
+    "Single image": 2,
+    "Optical + SAR": 1,
+    "Before / After": 0
+  },
+  "console_or_page_errors": [],
+  "mobile_horizontal_overflow": false,
+  "pass": true
+}

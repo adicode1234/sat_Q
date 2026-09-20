@@ -1,0 +1,182 @@
+{
+  "sar": {
+    "temperature": 1.1,
+    "threshold": 0.30000000000000004,
+    "test": {
+      "iou": 0.5938539431711111,
+      "precision": 0.8138905311634564,
+      "recall": 0.6871674964204553,
+      "f1": 0.7451798776361992,
+      "brier": 0.059828265638008735,
+      "ece_10_bins": 0.022595926788763605,
+      "pixels": 480000,
+      "tp": 52312,
+      "fp": 11962,
+      "fn": 23815
+    },
+    "validation_uncalibrated": {
+      "iou": 0.528170464319027,
+      "precision": 0.8110154201000725,
+      "recall": 0.6022986282825213,
+      "f1": 0.6912454816411947,
+      "brier": 0.06416893123284284,
+      "ece_10_bins": 0.015867861253828938,
+      "pixels": 460000,
+      "tp": 43601,
+      "fp": 10160,
+      "fn": 28790
+    },
+    "validation_calibrated": {
+      "iou": 0.5543037596551871,
+      "precision": 0.7088421081353944,
+      "recall": 0.7177135279247421,
+      "f1": 0.7132502333754325,
+      "brier": 0.06378780453175514,
+      "ece_10_bins": 0.009046655429340902,
+      "pixels": 460000,
+      "tp": 51956,
+      "fp": 21341,
+      "fn": 20435
+    },
+    "before_test": {
+      "iou": 0.36875456683388697,
+      "precision": 0.4091302363288302,
+      "recall": 0.7888791099084425,
+      "f1": 0.5388176606224823,
+      "brier": 0.19821649670729913,
+      "ece_10_bins": 0.3383907213358829,
+      "pixels": 480000,
+      "tp": 60055,
+      "fp": 86732,
+      "fn": 16072
+    },
+    "steps": 1600,
+    "seed": 731,
+    "split_chips": {
+      "train": 96,
+      "validation": 24,
+      "test": 24
+    },
+    "scope": "Original Sen1Floods11 official chip splits; 10k train / 20k evaluation valid pixels per chip, sampled without replacement. Events can overlap between splits; no cross-sensor generalization claim."
+  },
+  "optical": {
+    "temperature": 1.25,
+    "threshold": 0.5,
+    "test": {
+      "iou": 0.8966670907009286,
+      "precision": 0.9640302528823667,
+      "recall": 0.9277046591208212,
+      "f1": 0.9455186891755032,
+      "brier": 0.013971662992271554,
+      "ece_10_bins": 0.010165211757491733,
+      "pixels": 480000,
+      "tp": 70487,
+      "fp": 2630,
+      "fn": 5493
+    },
+    "validation_uncalibrated": {
+      "iou": 0.8318629200877148,
+      "precision": 0.914593291375226,
+      "recall": 0.9019255491201636,
+      "f1": 0.9082152501322346,
+      "brier": 0.023192398745265488,
+      "ece_10_bins": 0.008510673146363877,
+      "pixels": 460000,
+      "tp": 65248,
+      "fp": 6093,
+      "fn": 7095
+    },
+    "validation_calibrated": {
+      "iou": 0.8318629200877148,
+      "precision": 0.914593291375226,
+      "recall": 0.9019255491201636,
+      "f1": 0.9082152501322346,
+      "brier": 0.02348450677186041,
+      "ece_10_bins": 0.010634166780585902,
+      "pixels": 460000,
+      "tp": 65248,
+      "fp": 6093,
+      "fn": 7095
+    },
+    "before_test": {
+      "iou": 0.20340841166836873,
+      "precision": 0.20345912961413895,
+      "recall": 0.998775993682548,
+      "f1": 0.33805383059666255,
+      "brier": 0.2656535471800114,
+      "ece_10_bins": 0.3922170608837157,
+      "pixels": 480000,
+      "tp": 75887,
+      "fp": 297097,
+      "fn": 93
+    },
+    "steps": 1600,
+    "seed": 731,
+    "split_chips": {
+      "train": 96,
+      "validation": 24,
+      "test": 24
+    },
+    "scope": "Original Sen1Floods11 official chip splits; 10k train / 20k evaluation valid pixels per chip, sampled without replacement. Events can overlap between splits; no cross-sensor generalization claim."
+  },
+  "joint": {
+    "temperature": 1.25,
+    "threshold": 0.475,
+    "test": {
+      "iou": 0.895946116077049,
+      "precision": 0.9557095470233539,
+      "recall": 0.9347580518047601,
+      "f1": 0.9451176997908297,
+      "brier": 0.013808563001236097,
+      "ece_10_bins": 0.008411126280433385,
+      "pixels": 480000,
+      "tp": 71165,
+      "fp": 3298,
+      "fn": 4967
+    },
+    "validation_uncalibrated": {
+      "iou": 0.834017148301048,
+      "precision": 0.9120180020002222,
+      "recall": 0.9069912005636059,
+      "f1": 0.9094976555411648,
+      "brier": 0.022633635736407455,
+      "ece_10_bins": 0.0073230794995729626,
+      "pixels": 460000,
+      "tp": 65658,
+      "fp": 6334,
+      "fn": 6733
+    },
+    "validation_calibrated": {
+      "iou": 0.834283695816723,
+      "precision": 0.9058061334903916,
+      "recall": 0.913538975839538,
+      "f1": 0.9096561210453921,
+      "brier": 0.022863788323624897,
+      "ece_10_bins": 0.009057722284064791,
+      "pixels": 460000,
+      "tp": 66132,
+      "fp": 6877,
+      "fn": 6259
+    },
+    "before_test": {
+      "iou": 0.00012323466344613414,
+      "precision": 0.0019904458598726115,
+      "recall": 0.0001313508117480166,
+      "f1": 0.00024643895707033366,
+      "brier": 0.23206271133148323,
+      "ece_10_bins": 0.3857710041316847,
+      "pixels": 480000,
+      "tp": 10,
+      "fp": 5014,
+      "fn": 76122
+    },
+    "steps": 1600,
+    "seed": 731,
+    "split_chips": {
+      "train": 96,
+      "validation": 24,
+      "test": 24
+    },
+    "scope": "Original Sen1Floods11 official chip splits; 10k train / 20k evaluation valid pixels per chip, sampled without replacement. Events can overlap between splits; no cross-sensor generalization claim."
+  }
+}

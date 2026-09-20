@@ -1,0 +1,34 @@
+{
+  "grounding_dino": {
+    "status": "passed",
+    "boxes": [
+      {
+        "box": [
+          0,
+          14,
+          329,
+          512
+        ],
+        "label": "vehicle",
+        "score": 0.34824126958847046
+      },
+      {
+        "box": [
+          443,
+          151,
+          475,
+          189
+        ],
+        "label": "vehicle",
+        "score": 0.33741453289985657
+      }
+    ],
+    "quality_validated": false
+  },
+  "fusion": {
+    "status": "passed",
+    "sar_perturbation_changed_fraction": 0.1611480712890625,
+    "mode": "calibrated_multispectral_segmentation + optical_sar_proxy_fusion + synthetic_trained_cross_attention",
+    "training_scope": "synthetic only"
+  }
+}

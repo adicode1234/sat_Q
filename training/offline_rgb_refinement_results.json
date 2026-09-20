@@ -1,0 +1,196 @@
+{
+  "baseline_validation": {
+    "iou": 0.40961136648558294,
+    "precision": 0.6257660878447395,
+    "recall": 0.5425060881115785,
+    "f1": 0.5811692161745523,
+    "brier": 0.08877184276478074,
+    "ece_10_bins": 0.01837453037001517,
+    "pixels": 115000,
+    "tp": 9802,
+    "fp": 5862,
+    "fn": 8266
+  },
+  "selected_validation": {
+    "iou": 0.41479763912310286,
+    "precision": 0.6351429862500807,
+    "recall": 0.544553907460704,
+    "f1": 0.5863702732500968,
+    "brier": 0.08827351081415416,
+    "ece_10_bins": 0.018509625801249693,
+    "pixels": 115000,
+    "tp": 9839,
+    "fp": 5652,
+    "fn": 8229
+  },
+  "test": {
+    "iou": 0.4395240938949883,
+    "precision": 0.7760564522670127,
+    "recall": 0.5033670033670034,
+    "f1": 0.6106519449851613,
+    "brier": 0.09014807451150574,
+    "ece_10_bins": 0.04122266001931082,
+    "pixels": 120000,
+    "tp": 9568,
+    "fp": 2761,
+    "fn": 9440
+  },
+  "promoted": true,
+  "steps": 1800,
+  "history": [
+    {
+      "learning_rate": 0.0001,
+      "step": 200,
+      "validation": {
+        "iou": 0.4086723254324151,
+        "precision": 0.5963774466841951,
+        "recall": 0.5649214080141687,
+        "f1": 0.580223403348208,
+        "brier": 0.08925200227644682,
+        "ece_10_bins": 0.018690221965701685,
+        "pixels": 115000,
+        "tp": 10207,
+        "fp": 6908,
+        "fn": 7861
+      },
+      "selected": false
+    },
+    {
+      "learning_rate": 0.0001,
+      "step": 400,
+      "validation": {
+        "iou": 0.4083223408082504,
+        "precision": 0.5951409927755767,
+        "recall": 0.5653641797653309,
+        "f1": 0.5798705722070845,
+        "brier": 0.0892444817283832,
+        "ece_10_bins": 0.01869528759643435,
+        "pixels": 115000,
+        "tp": 10215,
+        "fp": 6949,
+        "fn": 7853
+      },
+      "selected": false
+    },
+    {
+      "learning_rate": 0.0001,
+      "step": 600,
+      "validation": {
+        "iou": 0.4074197582325969,
+        "precision": 0.6227064220183486,
+        "recall": 0.5409563869825105,
+        "f1": 0.5789598388816491,
+        "brier": 0.08937877721535872,
+        "ece_10_bins": 0.018602541268714096,
+        "pixels": 115000,
+        "tp": 9774,
+        "fp": 5922,
+        "fn": 8294
+      },
+      "selected": false
+    },
+    {
+      "learning_rate": 0.0003,
+      "step": 200,
+      "validation": {
+        "iou": 0.4084024812696367,
+        "precision": 0.6000473456826656,
+        "recall": 0.5611578481292894,
+        "f1": 0.5799513799513799,
+        "brier": 0.08942787950990486,
+        "ece_10_bins": 0.01882602783094929,
+        "pixels": 115000,
+        "tp": 10139,
+        "fp": 6758,
+        "fn": 7929
+      },
+      "selected": false
+    },
+    {
+      "learning_rate": 0.0003,
+      "step": 400,
+      "validation": {
+        "iou": 0.41118393412318294,
+        "precision": 0.6305650409123124,
+        "recall": 0.5416758910781492,
+        "f1": 0.5827503051594272,
+        "brier": 0.08878662342539227,
+        "ece_10_bins": 0.01906066691626025,
+        "pixels": 115000,
+        "tp": 9787,
+        "fp": 5734,
+        "fn": 8281
+      },
+      "selected": true
+    },
+    {
+      "learning_rate": 0.0003,
+      "step": 600,
+      "validation": {
+        "iou": 0.40637317953611884,
+        "precision": 0.6188159474316042,
+        "recall": 0.5420633163604162,
+        "f1": 0.5779023454786841,
+        "brier": 0.08944747013945333,
+        "ece_10_bins": 0.01827934247579263,
+        "pixels": 115000,
+        "tp": 9794,
+        "fp": 6033,
+        "fn": 8274
+      },
+      "selected": false
+    },
+    {
+      "learning_rate": 0.001,
+      "step": 200,
+      "validation": {
+        "iou": 0.41277589134125636,
+        "precision": 0.6390878622593152,
+        "recall": 0.5382444100066416,
+        "f1": 0.5843473035902058,
+        "brier": 0.08832517011326893,
+        "ece_10_bins": 0.02079956836133548,
+        "pixels": 115000,
+        "tp": 9725,
+        "fp": 5492,
+        "fn": 8343
+      },
+      "selected": true
+    },
+    {
+      "learning_rate": 0.001,
+      "step": 400,
+      "validation": {
+        "iou": 0.41479763912310286,
+        "precision": 0.6351429862500807,
+        "recall": 0.544553907460704,
+        "f1": 0.5863702732500968,
+        "brier": 0.08827351081415416,
+        "ece_10_bins": 0.018509625801249693,
+        "pixels": 115000,
+        "tp": 9839,
+        "fp": 5652,
+        "fn": 8229
+      },
+      "selected": true
+    },
+    {
+      "learning_rate": 0.001,
+      "step": 600,
+      "validation": {
+        "iou": 0.40928672023858836,
+        "precision": 0.6193042933249765,
+        "recall": 0.546878459154306,
+        "f1": 0.5808423713370368,
+        "brier": 0.08912551663426933,
+        "ece_10_bins": 0.017062191123936487,
+        "pixels": 115000,
+        "tp": 9881,
+        "fp": 6074,
+        "fn": 8187
+      },
+      "selected": false
+    }
+  ],
+  "scope": "Same fixed Sen1Floods11 chip splits and sampled RGB pixels. Validation selects all weights and calibration; test evaluated only after selection. Previously inspected test set is not a fresh benchmark. Screenshot transfer remains unvalidated."
+}

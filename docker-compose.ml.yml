@@ -1,0 +1,29 @@
+# docker compose -f docker-compose.yml -f docker-compose.ml.yml up --build
+# Fetch pretrained ViLT and DINO weights first; checkpoints are mounted read-only.
+
+x-ml-build: &ml-build
+  context: .
+  args:
+    WITH_ML: "1"
+
+services:
+  gateway:
+    environment:
+      SATQUERY_USE_VILT: "1"
+      SATQUERY_USE_DINO: "1"
+
+  vqa:
+    build: *ml-build
+    environment:
+      SATQUERY_USE_VILT: "1"
+
+  grounding:
+    build: *ml-build
+    environment:
+      SATQUERY_USE_DINO: "1"
+
+  change:
+    build: *ml-build
+
+  fusion:
+    build: *ml-build

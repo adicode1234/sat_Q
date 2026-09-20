@@ -1,0 +1,23 @@
+{
+  "scope": "SYNTHETIC ONLY; shared palette and simulated SAR; no real-world generalization established",
+  "architecture": "optical and SAR patch encoders + 3-head cross-attention + dense classification head",
+  "train_scenes": 128,
+  "holdout_scenes": 32,
+  "steps": 300,
+  "seed": 87,
+  "before_pixel_accuracy": 0.094482421875,
+  "after_pixel_accuracy": 0.993408203125,
+  "train_seed_range": [
+    1000,
+    1127
+  ],
+  "holdout_seed_range": [
+    2000,
+    2031
+  ],
+  "limitations": [
+    "Synthetic SAR class distributions are simplified.",
+    "Clouds are rectangular synthetic perturbations.",
+    "Output is 16x16 patch classification, not validated pixel segmentation."
+  ]
+}

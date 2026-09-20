@@ -1,0 +1,51 @@
+[
+  {
+    "demo": "vqa",
+    "status": "passed",
+    "task": "VQA",
+    "trace_events": 11,
+    "modes": [
+      "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary"
+    ],
+    "report_download": "passed",
+    "preview_download": "passed",
+    "trust": 0.5218
+  },
+  {
+    "demo": "grounding",
+    "status": "passed",
+    "task": "GROUNDING",
+    "trace_events": 15,
+    "modes": [
+      "adapted_tiny_rgb_mlp + vrsbench_lora_vilt_auxiliary",
+      "pretrained_grounding_dino_tiny"
+    ],
+    "report_download": "passed",
+    "preview_download": "passed",
+    "trust": 0.4905
+  },
+  {
+    "demo": "change",
+    "status": "passed",
+    "task": "CHANGE_VQA",
+    "trace_events": 11,
+    "modes": [
+      "cdvqa_tiny_siamese_vqa + deterministic_candidate_mask"
+    ],
+    "report_download": "passed",
+    "preview_download": "passed",
+    "trust": 0.3887
+  },
+  {
+    "demo": "fusion",
+    "status": "passed",
+    "task": "FUSION_ANALYSIS",
+    "trace_events": 12,
+    "modes": [
+      "adapted_tiny_rgb_mlp + optical_sar_proxy_fusion + synthetic_trained_cross_attention"
+    ],
+    "report_download": "passed",
+    "preview_download": "passed",
+    "trust": 0.5204
+  }
+]

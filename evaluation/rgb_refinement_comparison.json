@@ -1,0 +1,56 @@
+{
+  "validation": {
+    "baseline": {
+      "iou": 0.07128718809980807,
+      "f1": 0.1330869796478262,
+      "precision": 0.08349374060388068,
+      "recall": 0.327780688932403,
+      "brier": 0.6180207307235054,
+      "tp": 11885,
+      "fp": 130461,
+      "fn": 24374,
+      "tn": 63280,
+      "pixels": 230000
+    },
+    "candidate": {
+      "iou": 0.4095967927167944,
+      "f1": 0.5811545469358733,
+      "precision": 0.6277521761392729,
+      "recall": 0.5409967180562067,
+      "brier": 0.08913461416493292,
+      "tp": 19616,
+      "fp": 11632,
+      "fn": 16643,
+      "tn": 182109,
+      "pixels": 230000
+    }
+  },
+  "test": {
+    "baseline": {
+      "iou": 0.0735839730342967,
+      "f1": 0.13708098273174574,
+      "precision": 0.08691492803984187,
+      "recall": 0.3242108577576028,
+      "brier": 0.5955658798217773,
+      "tp": 12356,
+      "fp": 129806,
+      "fn": 25755,
+      "tn": 72083,
+      "pixels": 240000
+    },
+    "candidate": {
+      "iou": 0.44159119568955635,
+      "f1": 0.6126441351888668,
+      "precision": 0.7777418833790987,
+      "recall": 0.5053659048568655,
+      "brier": 0.09036132644017537,
+      "tp": 19260,
+      "fp": 5504,
+      "fn": 18851,
+      "tn": 196385,
+      "pixels": 240000
+    }
+  },
+  "promoted": true,
+  "scope": "Fixed RGB renderings of official Sen1Floods11 validation/test chips; no evaluation-driven hyperparameter adjustment. RGB sensor transfer remains unvalidated."
+}

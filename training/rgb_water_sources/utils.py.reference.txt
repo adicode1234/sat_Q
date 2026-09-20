@@ -1,0 +1,1028 @@
+import glob
+import math
+import os
+from pathlib import Path
+from random import shuffle, choice
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import rasterio
+import torch
+import warnings
+
+from h5py import File
+from matplotlib import colors
+from rasterio.crs import CRS
+from scipy.ndimage import gaussian_filter
+from torch.nn import functional as F
+from torchvision import transforms
+from tqdm import tqdm
+
+import nlveranderdetectie.segmentation.training.custom_transforms as tr
+from nlveranderdetectie.segmentation.errors import LabelsNotFound
+
+
+def check_filter_class(target, required_class, cutoff=50):
+    """Check if array contains at least cutoff number of instances of required_class
+
+    Args:
+        target (np.array): array to check
+        required_class (int): class number
+        cutoff (int): minimum amount required (default: 50)
+
+    Returns:
+        bool: Whether the array contains enough of the class or not
+    """
+    if np.argwhere(target == required_class).size >= cutoff:
+        return True
+    else:
+        return False
+
+
+def transform_sample(sample, input_stack, height_aug, split, height_norm_val):
+    """Apply transformation on sample based on arguments. Functional version
+       that can be called without initializing the normal experiment config and
+       dataloaders etc. Useful in case you need to transform a sample for debugging
+       without setting up the whole training routine. 
+
+    Args:
+        sample (dict): Dict in format {}
+        input_stack (str): Input stack describing the subset and ordereing of data to use, see config.defaults for all options
+        height_aug (bool): Bool indicating whether to use height augmentation on the ahn layers
+        split (str): either 'train' or 'val', 'val' won't apply rotations, flips and mirrors.
+        height_norm_val (int): value to use for height normalization, either the mean or median from ahn layer
+
+    Returns:
+        torchvision.transforms.Compose: composed list of pytorch transformations
+    """
+    means, stds = get_mean_std_for_stack(input_stack
+                                         )
+    transforms = compose_transforms(means, stds, split, height_aug, height_norm_val)
+    return transforms(sample)
+
+
+def get_transforms(cfg, split):
+    """Get transforms based on experiment config and train or test phase
+
+    Args:
+        cfg (yacs.config.CfgNode): cfg to get the input stack and heigh aug arguments from.
+        split (str): either 'train' or 'val', 'val' won't apply rotations, flips and mirrors.
+
+    Returns:
+        torchvision.transforms.Compose: torchvision.transforms.Compose: composed list of pytorch transformations
+    """
+    means, stds = get_mean_std_for_stack(cfg.DATASET.INPUT_STACK)
+    transforms = compose_transforms(means, stds, split, cfg.TRAIN.HEIGHT_AUG, 0)
+    return transforms
+
+
+def collapse_onehot(onehot_array, axis=1):
+    """collapse a one-hot encoded feature_map, works for both numpy arrays and torch tensors.
+
+    Args:
+        onehot_array (torch.Tensor or numpy.Array): array to collapse
+        axis (int, optional): axis to collapse. Defaults to 1.
+
+    Returns:
+        torch.Tensor or numpy.array: collapsed tensor/array.
+    """
+    if torch.is_tensor(onehot_array):
+        return torch.argmax(onehot_array, dim=axis)
+    elif type(onehot_array) == np.ndarray:
+        return np.argmax(onehot_array, axis=axis)
+
+
+def expand_to_onehot(flat_array, num_classes):
+    """Expand feature map to one-hot encoding
+
+    Args:
+        flat_array (torch.Tensor or numpy.Array): array to expand
+        num_classes (int): number of classes/dimensions to expand to
+
+    Returns:
+        torch.Tensor or numpy.Array: expanded array
+    """
+    if torch.is_tensor(flat_array):
+        return F.one_hot(flat_array, num_classes).permute(0, 3, 1, 2)
+    elif type(flat_array) == np.ndarray:
+        # I hope you're not going to use more than 256 classes
+        return np.eye(num_classes)[flat_array.astype(np.uint8)]
+
+
+def get_mean_std_for_stack(input_stack):
+    """Get means and stds per channel for given input_stack
+
+    Args:
+        input_stack (str): input stack describing the combinations of input sources and channels
+
+    Raises:
+        NotImplementedError: When means and stds for stack stack are not described
+
+    Returns:
+        list, list: list of means, list of stds
+    """
+    if input_stack == "RGB":
+        means = [101.741, 106.593, 96.384]
+        stds = [107.906, 110.343, 100.665]
+    elif input_stack == "CIR":
+        means = [101.741, 106.593, 96.384]
+        stds = [107.906, 110.343, 100.665]
+    elif input_stack == "DTM_DSM":
+        means = [0, 0]
+        stds = [15, 15]
+    elif input_stack == "RGB_NIR":
+        means = [101.741, 106.593, 96.384, 148.263]
+        stds = [107.906, 110.343, 100.665, 153.2744]
+    elif input_stack == "RGB_DTM_DSM":
+        means = [101.741, 106.593, 96.384, 0, 0]
+        stds = [107.906, 110.343, 100.665, 15, 15]
+    elif input_stack == "RGB_NIR_DTM_DSM":
+        means = [101.741, 106.593, 96.384, 148.263, 0, 0]
+        stds = [107.906, 110.343, 100.665, 153.2744, 15, 15]
+    elif input_stack == "RGB_CIR":
+        means = [101.741, 106.593, 96.384, 148.263, 148.263, 148.263]
+        stds = [107.906, 110.343, 100.665, 153.2744, 153.2744, 153.2744]
+    elif input_stack == "RGB_FEAT2000":
+        means = [101.741, 106.593, 96.384, 0, 0, 0]
+        stds = [107.906, 110.343, 100.665, 1, 1, 1]
+    else:
+        raise NotImplementedError(f'input_stack not implemented: {input_stack}')
+    return means, stds
+
+
+def compose_transforms(means, stds, split, height_aug=False, height_norm_val=0):
+    """Compose pytorch transforms based on arguments.
+
+    Args:
+        means (list): list of mean values, per channel
+        stds (list): list of std values, per channe;
+        split (str): dataset split, can be 'train' or 'val', 'val' does not apply augmentations
+        height_aug (bool, optional): Apply height augmentations to dsm/dtm channels. Defaults to False.
+        height_norm_val (int, optional): Value to use for height augmentation. Defaults to 0.
+
+    Raises:
+        NotImplementedError: When transformations are not available for given split.
+
+    Returns:
+        torchvision.transforms.Compose: composed list of pytorch transformations
+    """
+    split = split.lower()
+
+    if split == 'train':
+        if height_aug:
+            composed_transforms = transforms.Compose([
+                tr.ClipAHN(4, 5, -600, 25),
+                tr.MedianHeightNormalize(4, 5, height_norm_val),
+                tr.AddHeightNoise(2, 4, 5),  # (noiserange, dtmchannel, dsmchannel)
+                tr.ClipAHN(4, 5, -25, 25),
+                tr.RandomHorizontalFlipNumpy(),
+                tr.RandomVerticalFlipNumpy(),
+                tr.RandomRotate90Numpy(),
+                tr.NormalizeNumpy(means, stds),
+                tr.FlipChannelNumpy(),
+                tr.ToTensor()
+            ])
+        else:
+            composed_transforms = transforms.Compose([
+                tr.RandomHorizontalFlipNumpy(),
+                tr.RandomVerticalFlipNumpy(),
+                tr.RandomRotate90Numpy(),
+                tr.NormalizeNumpy(means, stds),
+                tr.FlipChannelNumpy(),
+                tr.ToTensor()
+            ])
+    elif split == 'val':
+        if height_aug:
+            composed_transforms = transforms.Compose([
+                tr.ClipAHN(4, 5, -600, 25),
+                tr.MedianHeightNormalize(4, 5, height_norm_val),
+                tr.ClipAHN(4, 5, -25, 25),
+                tr.NormalizeNumpy(means, stds),
+                tr.FlipChannelNumpy(),
+                tr.ToTensor()
+            ])
+        else:
+            composed_transforms = transforms.Compose([
+                tr.NormalizeNumpy(means, stds),
+                tr.FlipChannelNumpy(),
+                tr.ToTensor()
+            ])
+    else:
+        raise NotImplementedError(f"no transformations available for split: {split}")
+
+    return composed_transforms
+
+
+def make_coordinate_list(image_shape, window_shape, pad_borders=True, overlap=0.3):
+    """make a list of coordinates for prediction windows of shape window_shape. 
+    Useful for processing a large image in smaller windows. overlap is 50%
+
+    Args:
+        image_shape (int, int): tuple or list containing the width and height of the image to process, ()
+        window_shape (int, int): size of the window that will be used to process the image
+        pad_borders (bool, optional): add the border coordinates to the coordinate list. Defaults to True.
+        overlap (float): amount of overlap to add to the segmentation. Overlap is given as fraction between 0 and 1 with closer to 1 is more overlap.
+        More overlap between segmentations will decrease things like hard edges between the patches.
+    """
+    coordinates = []
+
+    # middle section
+    for x in range(0, image_shape[0] - window_shape[0], math.floor(window_shape[0] * (1 - overlap))):
+        for y in range(0, image_shape[1] - window_shape[1], math.floor(window_shape[1] * (1 - overlap))):
+            coordinates.append((x, y, x + window_shape[0], y + math.floor(window_shape[1])))
+
+    if pad_borders:
+        # right border
+        x = image_shape[0] - window_shape[0]
+        for y in range(0, image_shape[1] - window_shape[1], math.floor(window_shape[1] * (1 - overlap))):
+            coordinates.append((x, y, x + window_shape[0], y + math.floor(window_shape[1])))
+
+        # bottom border
+        y = image_shape[1] - window_shape[1]
+        for x in range(0, image_shape[0] - window_shape[0], math.floor(window_shape[0] * (1 - overlap))):
+            coordinates.append((x, y, x + window_shape[0], y + math.floor(window_shape[1])))
+
+    return coordinates
+
+
+def batch_coordinates(source_image, coord_list, batch_size, input_stack, channel_last=True, apply_transforms=True):
+    """Batch generator for input image/block.
+
+    Args:
+        source_image (torch.Tensor): Input image tensor to slice batches from
+        coord_list (list): list of tuples in shape (x1,y1,x2,y2) describing coordinates for the samples 
+        batch_size (int): size of batches to generate
+        input_stack (str): Input stack, used to determine proper transforms.
+        channel_last (bool, optional): Indicates whether input image is in channel last representation. Defaults to True.
+        apply_transforms (bool, optional): Whether to use input . Defaults to True.
+
+    Raises:
+        ValueError: If image dimension 0 is bigger than 1 and 2.
+        ValueError: If not all windows in the coordinate list are of equal size.
+
+    Yields:
+        [torch.Tensor, list]: batch tensor, list of the coordinates of the images in the batch.
+    """
+    s_image = source_image.copy()
+
+    if channel_last:
+        s_image = np.moveaxis(s_image, -1, 0)
+
+    # check if channel order is correct
+    if (s_image.shape[0] > s_image.shape[1]) or (s_image.shape[0] > s_image.shape[2]):
+        raise ValueError(f"image dimension 0 is bigger than 1 and 2, you're probably passing a channel last image, please "
+                         "set the channel_last flag to True or check your code for other bugs. \n " +
+                         f"shape source: {s_image.shape}, ")
+
+    channel_size = s_image.shape[0]
+
+    # check if windows are all the same shape
+    x_shapes = [coord[2] - coord[0] for coord in coord_list]
+    y_shapes = [coord[3] - coord[1] for coord in coord_list]
+    x_check = all([size == x_shapes[0] for size in x_shapes])
+    y_check = all([size == y_shapes[0] for size in y_shapes])
+    if (not x_check) or (not y_check):
+        raise ValueError(f"Not all windows in the coordinatelist are of equal size!")
+
+    n_coords = len(coord_list)
+    n_batches = math.floor(n_coords / batch_size)
+    if (n_coords % batch_size) != 0:
+        n_batches += 1
+
+    for batch_counter in range(0, n_batches):
+        batch = np.empty((batch_size, channel_size, x_shapes[0], y_shapes[0]))
+        batch_coords = []
+        for patch_counter in range(0, batch_size):
+            # get the next coordinate, to complete the final batch we just do the last coordinate multiple times
+            # if there are not exactly enough coords for batch_size
+            try:
+                (x1, y1, x2, y2) = coord_list[patch_counter + (batch_counter * batch_size)]
+            except IndexError:
+                (x1, y1, x2, y2) = coord_list[-1]
+
+            batch_coords.append((x1, y1, x2, y2))
+            # get patch from source image
+            patch = s_image[:, x1:x2, y1:y2].copy()
+
+            if apply_transforms:
+                # transform sample, transform_sample expects channel last, so we swap the channels
+                patch = np.moveaxis(patch, 0, -1)
+
+                # TODO: implement functional height augmentation by passing config or making it an argument
+                transfomed_sample = transform_sample({"image": patch, "label": np.empty(
+                    (patch.shape[1], patch.shape[2]))}, input_stack, False, 'val', 0)
+                patch = transfomed_sample['image']
+
+            # place patch in batch
+            batch[patch_counter] = patch
+
+        yield torch.from_numpy(batch).float(), batch_coords
+
+
+def make_gaussian(patch_size, sigma_scale=1. / 8):
+    """make gaussian matrix to weigh feature map
+
+    Args:
+        patch_size (tuple(int,int)): shape of gaussian
+        sigma_scale (float, optional): scale of the gaussian curve. Defaults to 1./8.
+
+    Returns:
+        np.ndarray: Gaussian importance map.
+    """
+    tmp = np.zeros(patch_size)
+    center_coords = [i // 2 for i in patch_size]
+    sigmas = [i * sigma_scale for i in patch_size]
+    tmp[tuple(center_coords)] = 1
+    gaussian_importance_map = gaussian_filter(tmp, sigmas, 0, mode='constant', cval=0)
+    gaussian_importance_map = gaussian_importance_map / np.max(gaussian_importance_map) * 1
+    gaussian_importance_map = gaussian_importance_map.astype(np.float32)
+
+    # gaussian_importance_map cannot be 0, otherwise we may end up with nans!
+    gaussian_importance_map[gaussian_importance_map == 0] = np.min(
+        gaussian_importance_map[gaussian_importance_map != 0])
+
+    return gaussian_importance_map
+
+
+def segment_tile(model, input_image, num_classes, window_size, batch_size, input_stack, gaussian_patch_weight=True, collapse=True, tqdm_pos=0):
+    """Segment input image.
+
+    Args:
+        model (torch.nn.Module): (Trained) segmentation model to use
+        input_image (torch.Tensor): Input image to segment
+        num_classes (int): number of classes in the label
+        window_size (tuple(int,int)): input size to use for the segmentation
+        batch_size (int): batch size to use
+        input_stack (str):  Input stack, used to determine correct transforms.
+        gaussian_patch_weight (bool, optional): Whether to apply gaussian weighing to the output of the model. Defaults to True.
+        collapse (bool, optional): Collapse output feature map to 2d. Defaults to True.
+        tqdm_pos (int, optional): position of tqdm progress bar, used by generate_featuremap.py script for nested progress bars. Defaults to 0.
+
+    Returns:
+        torch.Tensor: segmented tile
+    """
+    segmented_tile = torch.zeros((
+        num_classes, input_image.shape[0], input_image.shape[1]), dtype=torch.float32)
+    gaussian_filter = torch.from_numpy(make_gaussian(window_size)).float()
+
+    coordinates = make_coordinate_list(
+        (input_image.shape[0], input_image.shape[1]), window_size, pad_borders=True, overlap=0.3)
+
+    # bit of duplication to find out the length of the generator, I didnt want to wrap it in an extra class to get the length
+    n_coords = len(coordinates)
+    n_batches = math.floor(n_coords / batch_size)
+    if (n_coords % batch_size) != 0:
+        n_batches += 1
+
+    # get batch_generator
+    batch_provider = batch_coordinates(input_image, coordinates, batch_size, input_stack)
+    
+    # loop over batches and segment the tile
+    for batch, patch_coords in tqdm(batch_provider, desc=f"segmenting tile", total=n_batches, position=tqdm_pos, leave=False):
+        # lets just always do validation on 1 gpu to avoid confusion, no DDP etc.
+        # added .contiguous() to remove warning lightning was giving about Grad strides do not match bucket view strides
+        batch = batch.to("cuda:0").contiguous()
+        
+        output = model(batch).cpu()
+
+        for i in range(batch_size):
+
+            (x1, y1, x2, y2) = patch_coords[i]
+            if gaussian_patch_weight:
+                segmented_tile[:, x1:x2, y1:y2] += output[i] * gaussian_filter
+            else:
+                segmented_tile[:, x1:x2, y1:y2] += output[i]
+    del output
+    if collapse:
+        return torch.argmax(segmented_tile, axis=0)
+    else:
+        return segmented_tile
+
+
+def load_h5_block(filepath, sources_to_read, resize_xy=None, return_label=True, group_name=None):
+    """Load hdf5 block/tile.
+
+    Args:
+        filepath (str): path to file
+        sources_to_read (list): sources to read from the hdf5 file
+        resize_xy ([int,int], optional): Resize the sources to shape (height, width) if given. Defaults to None.
+        return_label ([[h,w]], optional): Return label of the block. Defaults to True.
+        group_name (str, optional): keypath to add to the hdf5 key name, example: group_name='resized_2000', would try to read 
+                                    '/resized_2000/rgb' from the dataset if sources_to_read=['rgb]. Defaults to "".
+
+    Raises:
+        KeyError: When trying to read sources that are not present in file.
+
+    Returns:
+        list, np.array: list of input sources, label array
+    """
+    if group_name:
+        if group_name[-1] != "/":
+            group_name += "/"
+    else:
+        group_name = ""
+
+    with File(filepath, 'r') as f:
+        tiles = []
+        for target_source in sources_to_read:
+            found_sources = f.keys()
+            if group_name + target_source in found_sources:
+                tile = f[group_name + target_source][:]
+            elif group_name + target_source.lower() in found_sources:
+                tile = f[group_name + target_source.lower()][:]
+            elif group_name + target_source.upper() in found_sources:
+                tile = f[group_name + target_source.upper()][:]
+            else:
+                raise KeyError(f"no key '{group_name + target_source}' or '{group_name + target_source.lower()}' or " +
+                               f"'{group_name + target_source.upper()}' found in file {filepath}, did find: {found_sources}")
+            if resize_xy:
+                tile = resize_2d(tile, resize_xy[0], resize_xy[1])
+            tiles.append(tile)
+
+        if return_label:
+            label = f[group_name + "label"][:]
+            if resize_xy:
+                label = resize_2d(label, resize_xy[0], resize_xy[1])
+
+            if len(tiles) > 1:
+                return np.concatenate(tiles, axis=2), label
+            else:
+                return tiles[0], label
+        else:
+            if len(tiles) > 1:
+                return np.concatenate(tiles, axis=2), None
+            else:
+                return tiles[0], None
+
+
+def resize_torch(input,
+           size=None,
+           scale_factor=None,
+           mode='nearest',
+           align_corners=None,
+           warning=True):
+    """Resize function taken from https://github.com/NVlabs/SegFormer/blob/08c5998dfc2c839c3be533e01fce9c681c6c224a/mmseg/ops/wrappers.py
+    This was used in the by the segformer code to do the upscaling so I copied it here for fast interpolation of model outputs.
+    """
+    if warning:
+        if size is not None and align_corners:
+            input_h, input_w = tuple(int(x) for x in input.shape[2:])
+            output_h, output_w = tuple(int(x) for x in size)
+            if output_h > input_h or output_w > output_h:
+                if ((output_h > 1 and output_w > 1 and input_h > 1
+                     and input_w > 1) and (output_h - 1) % (input_h - 1)
+                        and (output_w - 1) % (input_w - 1)):
+                    warnings.warn(
+                        f'When align_corners={align_corners}, '
+                        'the output would more aligned if '
+                        f'input size {(input_h, input_w)} is `x+1` and '
+                        f'out size {(output_h, output_w)} is `nx+1`')
+    if isinstance(size, torch.Size):
+        size = tuple(int(x) for x in size)
+    return F.interpolate(input, size, scale_factor, mode, align_corners)
+
+
+
+def resize_2d(array, s1=10000, s2=10000):
+    """
+    Resize any array of shape (h,w,C) to (s1,s2,C).
+    Note: PIL resize is able to interpolate float values for some reason,
+    but it might not work in other versions, so be careful.
+    cfg:
+        array: Array to resize
+        s1: target shape 1
+        s2: target shape 2
+
+    Returns:
+        array: resized original array
+    """
+    if array.ndim > 2:
+        # if its already the correct shape don't do anything
+        if array.shape[0] == s1 and array.shape[1] == s2:
+            return array
+
+        new_array = np.empty((s1, s2, array.shape[-1]))
+        for i in range(array.shape[-1]):
+            array_slice = array[:, :, i]
+            channel = cv2.resize(array_slice, dsize=(s1, s2), interpolation=cv2.INTER_NEAREST)
+            new_array[:, :, i] = channel
+    else:
+        new_array = cv2.resize(array, dsize=(s1, s2), interpolation=cv2.INTER_NEAREST)
+    return new_array
+
+
+def decode_segmap(label_mask, cfg, plot=False):
+    """Decode segmentation class labels into a color image
+    Args:
+        label_mask (np.ndarray): an (M,N) array of integer values denoting
+          the class label at each spatial location.
+        plot (bool, optional): whether to show the resulting color image
+          in a figure.
+        cfg: config for run, used to get class colors
+    Returns:
+        (np.ndarray, optional): the resulting decoded color image.
+    """
+    color_dict = get_color_dict(cfg)
+    r = label_mask.clone()
+    g = label_mask.clone()
+    b = label_mask.clone()
+    for classname in cfg.DATASET.CLASSES:
+        idx = int(cfg.MAPPINGS.CLASS_TO_CLASSIDX[classname.upper()])
+        r[label_mask == idx] = color_dict[classname.upper()][0]
+        g[label_mask == idx] = color_dict[classname.upper()][1]
+        b[label_mask == idx] = color_dict[classname.upper()][2]
+
+    r = r / 255.0
+    g = g / 255.0
+    b = b / 255.0
+    rgb = torch.stack((r, g, b), axis=-1)
+    if plot:
+        plt.imshow(rgb)
+        plt.show()
+    else:
+        return rgb
+
+
+def get_color_dict(cfg):
+    """convert rgb color names to array type
+    Args:
+        cfg: config for run, used to get class colors
+    Returns:
+        color_dict: dictionary of classes with colors.
+    """
+    color_dict = {}
+    classes = ['background'] + cfg.DATASET.CLASSES
+    bgt_colors = ['black'] + cfg.DATASET.COLORMAP
+    try:
+        assert len(bgt_colors[:len(classes)]) == len(classes)
+        for bgtclass, color in zip(classes, bgt_colors[:len(classes)]):
+            color_dict[bgtclass.upper()] = np.array(colors.to_rgb(color)) * 255
+    except AssertionError:
+        raise Exception("No colors defined for some classes, add more colors in the config")
+    return color_dict
+
+
+def segment_folder(cfg, model, from_h5=False, save_labels=False, segment_only=[], topleft_coord=False):
+    """Segment all hdf5 files present in the parsed/hdf5 folder.
+
+    Args:
+        cfg (yacs.config.CfgNode): config to use
+        model (torch.nn.Module): Model to use for the segmentation
+        from_h5 (bool): tells the function to expect a hdf5 format dataset, if false will look for a geotiff dataset
+        save_labels (bool, optional): Save labels as geotiffs to the ground_truth folder. Defaults to True.
+        segment_only (list): a list of keys to segment, useful for testing segmentation on a few specific tiles of the dataset. defaults to []
+        topleft_coord (bool): Wether the coordinates that are passed are to be interpreted as top left of the block. If set to False 
+        will interpret as bottom left instead. defaults to True
+    """
+    sources_to_use = cfg.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS[cfg.DATASET.INPUT_STACK]
+    if from_h5:
+        to_segment = list(Path(cfg.DATASET.DATA_SOURCE_FOLDERS.PARSED_DIR).glob("*.h5"))
+    else:
+        to_segment = list(Path(cfg.DATASET.KEYS_FROM).glob("*.tif"))
+
+    os.makedirs(os.path.join(cfg.DATASET.DATA_SOURCE_FOLDERS.SEGMENTED_DIR), exist_ok=True)
+
+    if save_labels:
+        os.makedirs(os.path.join(cfg.DATASET.DATA_SOURCE_FOLDERS.BGT_DIR), exist_ok=True)
+
+    shuffle(to_segment)  # random shuffle each time, helps with debugging
+
+    for base_filepath in tqdm(to_segment):
+        key = os.path.basename(base_filepath).rsplit('.', 1)[0]
+        rd_x, rd_y = key.split("_")
+        rd_x, rd_y = int(rd_x), int(rd_y)
+        # if key name is in meters instead of kilometers, just divide by 1000
+        # we need the keys to be in kilometers for the save tif function
+        if rd_x > 1000 or rd_y > 1000:
+            rd_x, rd_y = int(rd_x / 1000), int(rd_y / 1000)
+        if topleft_coord:
+            rd_y = rd_y - 1
+
+        fpath_seg = os.path.join(cfg.DATASET.DATA_SOURCE_FOLDERS.SEGMENTED_DIR, f"{key}.tif")
+        fpath_gt = os.path.join(cfg.DATASET.DATA_SOURCE_FOLDERS.BGT_DIR, f"{key}.tif")
+
+        # skip if all required files already exist
+        if os.path.exists(fpath_seg):
+            if os.path.exists(fpath_gt) or not save_labels:
+                continue
+
+        # if a selection of keys is passed then check if the key is in that selection, otherwise skip this key.
+        if len(segment_only) > 0:
+            if key not in segment_only:
+                continue
+
+        if not os.path.exists(fpath_seg):
+            try:
+                if from_h5:
+                    image, label = load_h5_block(base_filepath, sources_to_use, resize_xy=(
+                        cfg.DATASET.BLOCK_SIZE, cfg.DATASET.BLOCK_SIZE), return_label=save_labels)
+                else:
+                    image, label = load_unprocessed_stacked(cfg, key)
+            except LabelsNotFound:
+                continue
+
+            with torch.no_grad():
+                segmented_tile = segment_tile(model,
+                                              image,
+                                              cfg.DATASET.NUM_CLASSES,
+                                              cfg.TRAIN.IMAGE_SIZE,
+                                              cfg.INFERENCE.BATCH_SIZE,
+                                              cfg.DATASET.INPUT_STACK,
+                                              collapse=True,
+                                              tqdm_pos=1).detach().cpu().float()
+
+            save_block_as_geotiff(fpath_seg, segmented_tile, 28992, cfg.DATASET.BLOCK_SIZE,
+                                  rd_x, rd_y, make_bool_mask=False)
+
+        if save_labels and not os.path.exists(fpath_gt):
+            # correctly collapse label for saving
+            class_1 = label.copy()[:, :, 0]
+            classes_n = collapse_onehot(label, axis=2)
+            classes_n = np.where(classes_n, classes_n + 1, classes_n)
+            label = class_1 + classes_n
+            save_block_as_geotiff(fpath_gt, label, 28992, cfg.DATASET.BLOCK_SIZE,
+                                  rd_x, rd_y, make_bool_mask=False)
+
+
+def save_block_as_geotiff(filepath, array, epsg, block_size, x_left, y_bot, make_bool_mask=True, dtype=np.uint8):
+    """Save array as geotiff, expects square input array
+
+    Args:
+        filepath (str): path and filename to save the geotiff at.
+        array (np.array): array to save
+        epsg (str): EPSG string for geotiff
+        block_size (int): size of sides of the block.  
+        x_left (int): RD coordinate in kilometers of left bound of the block, ex. 186
+        y_bot (int): RD coordinate in kilometers of bottom bound of the block ex. 545
+        make_bool_mask (bool, optional): save .mask file to filter out background class. Defaults to True.
+        dtype (type, optional): numpy datatype of the final geotiff, input image will be converted to this. Defaults to np.uint8.
+    """
+    if type(array) != np.ndarray:
+        array = np.array(array)
+
+    # I think this is needed because the affine translation below flips the whole thing again, if someone with more
+    # understanding of it could fix it that would be very nice.
+    # array = np.flipud(array)
+
+    # if this line gives you troubles you can use this hardcoded epsg 28992 wkt instead
+    wkt_crs = ('PROJCS["Amersfoort / RD New",'
+               'GEOGCS["Amersfoort",DATUM["Amersfoort",'
+               'SPHEROID["Bessel 1841",6377397.155,299.1528128,AUTHORITY["EPSG","7004"]],'
+               'AUTHORITY["EPSG","6289"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],'
+               'UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9122"]],'
+               'AUTHORITY["EPSG","4289"]],PROJECTION["Oblique_Stereographic"],'
+               'PARAMETER["latitude_of_origin",52.1561605555556],'
+               'PARAMETER["central_meridian",5.38763888888889],'
+               'PARAMETER["scale_factor",0.9999079],'
+               'PARAMETER["false_easting",155000],PARAMETER["false_northing",463000],'
+               'UNIT["metre",1,AUTHORITY["EPSG","9001"]],AXIS["Easting",EAST],'
+               'AXIS["Northing",NORTH],AUTHORITY["EPSG","28992"]]')
+    wkt_crs = CRS.from_epsg(epsg).to_wkt()
+
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    scale = 1000 / block_size
+    transform = rasterio.transform.from_origin(
+        int(x_left) * 1000, int(y_bot + 1) * 1000, scale, scale)
+
+    new_dataset = rasterio.open(filepath, 'w',
+                                driver='GTiff', height=block_size, width=block_size, count=1, dtype=dtype,
+                                crs=wkt_crs,
+                                compress='lzw', transform=transform)
+    new_dataset.write(array.reshape((1, block_size, block_size)
+                                    ).astype(dtype))  # .transpose([2,0,1])
+    if make_bool_mask:
+        mask = np.array(array).astype(np.bool)
+        new_dataset.write_mask(mask)
+
+    new_dataset.close()
+
+
+def stack_data_sources(stack_order, input_dict, class_list):
+    """stack the data in the input_dict to make the input_array and the label_array.
+       The order given in the class_list is used to determine the order in which to stack the labels.
+       This function is only used during the preprocessing to make the h5 blocks, stack during training is done
+       in the BGTSEG dataset class in datasets.py
+
+    Args:
+        stack_order (str): input_stack version to use, see defaults.py for full list.
+        input_dict (dict): dict containing the image data in unstacked format
+        class_list (list): list of class names to use, order of the list is used to determine the stacking order
+        and thus the one-hot encoding.
+
+    Returns:
+        [type]: [description]
+    """
+    stack_order = stack_order.upper()
+
+    size = choice(list(input_dict['labels'].values())).shape 
+    labels = np.zeros((size[0], size[1], len(class_list)))
+
+    for i, label_name in enumerate(class_list):
+        labels[:,:, i] = input_dict['labels'][label_name]
+
+    if stack_order == "CIR":
+        return input_dict["cir"], labels
+    elif stack_order == "RGB":
+        return input_dict["rgb"], labels
+    elif stack_order == "DTM_DSM":
+        input = np.stack([input_dict['dtm'], input_dict['dsm']], axis=-1)
+        return input, labels
+    elif stack_order == "RGB_NIR":
+        input = np.concatenate([input_dict['rgb'],
+                               np.expand_dims(input_dict['cir'][:, :, 0],
+                               axis=-1)])
+        return input, labels
+    elif stack_order == "RGB_NIR_DTM_DSM":
+        input = np.concatenate([input_dict['rgb'],
+                               input_dict['cir'],
+                               np.expand_dims(input_dict['dtm'], axis=-1),
+                               np.expand_dims(input_dict['dsm'], axis=-1)])
+        return input, labels
+    elif stack_order == "RGB_DTM_DSM":
+        input = np.concatenate([input_dict['rgb'],
+                               np.expand_dims(input_dict['dtm'], axis=-1),
+                                np.expand_dims(input_dict['dsm'], axis=-1)])
+        return input, labels
+
+
+def load_unprocessed_stacked(cfg, key):
+    """Load all the data for a key/block from geotiff sources
+
+    Args:
+        cfg (cfgnode): config, used to determine block loading parameters, input stack, classes, location of data etc.
+        key (str): location in format <top_rd_coordinate_in_m>_<left_rd_coordinate_in_m>
+
+    Returns:
+        input array (np.array): array containing input image data
+        label array (np.array): one hot encoded label array.
+    """
+    sources_to_read = cfg.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS[cfg.DATASET.INPUT_STACK]
+    target_size = (cfg.DATASET.BLOCK_SIZE, cfg.DATASET.BLOCK_SIZE)
+    data_paths = cfgnode_to_dict(cfg.DATASET.DATA_SOURCE_FOLDERS)
+    input_dict = load_unprocessed_input_layers(key,
+                                               data_paths,
+                                               sources_to_read,
+                                               resize_xy=target_size,
+                                               return_label=True)
+
+    # stack the sources
+    input_array, label_array = stack_data_sources(
+        cfg.DATASET.INPUT_STACK, input_dict, cfg.DATASET.CLASSES)
+    return input_array, label_array
+
+
+def load_unprocessed_input_layers(key, paths_dict, sources_to_read, resize_xy=None, return_label=True):
+    """Load a data for a single 1x1km block. This function does not depend on a config file, instead all the arguments are given explicitly
+
+    Args:
+        key (str): string referring to the coordinates of the block to read
+        paths_dict (dict): dict containing paths to each data source folder. for example, see cfg.DATASET.DATA_SOURCE_FOLDERS
+        sources_to_read (list): list of sources that make up the block, ie. ['rgb', 'cir']. 
+        For example, see cfg.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS
+        resize_xy ([int,int], optional): Resize the sources to shape (height, width) if given. 
+        If not set will return the sources at whatever resolution they come in. Defaults to None.
+        return_label (bool, optional): If given, the label is also read and returned in the loaded_sources dict. Defaults to True.
+
+    Raises:
+        LabelsNotFound: raised if return_label is true and no labels can be found.
+
+    Returns:
+        dict: returns a dict containing with the source names as key and the source as value.
+    """
+    sources_to_read = [s.lower() for s in sources_to_read]
+
+    loaded_sources = {}
+
+    if return_label:
+        glob_path = Path(paths_dict['BGT_DIR']) / key
+        label_paths = glob.glob(str(glob_path) + "/*.tif")
+
+        label_dict = {}
+        for label_path in label_paths:
+            mask_dataset = rasterio.open(label_path)
+            mask = mask_dataset.read(1)
+
+            mask[mask < 1] = 0
+            mask[mask >= 1] = 1
+            if resize_xy:
+                mask = resize_2d(mask, s1=resize_xy[0], s2=resize_xy[1])
+
+            # get the label name from the filename, also remove the bgt_ part if it exists
+            label_name = os.path.basename(label_path).rsplit('.', 1)[0].replace("bgt_", "")
+            label_dict[label_name] = mask
+        if len(label_dict) == 0:
+            raise LabelsNotFound("No classes found")
+
+        loaded_sources['labels'] = label_dict
+
+    if "rgb" in sources_to_read:
+        rgb_path_jpg = os.path.join(paths_dict['RGB_DIR'], key + ".jpg")
+        rgb_path_png = os.path.join(paths_dict['RGB_DIR'], key + ".png")
+        rgb_path_tif = os.path.join(paths_dict['RGB_DIR'], key + ".tif")
+
+        if os.path.exists(rgb_path_jpg):
+            rgb_array = np.array(rgb_path_jpg, dtype=np.uint8)
+        elif os.path.exists(rgb_path_png):
+            rgb_array = np.array(rgb_path_png, dtype=np.uint8)
+        elif os.path.exists(rgb_path_tif):
+            rgb_dataset = rasterio.open(rgb_path_tif, dtype=np.uint8)
+            rgb_array = np.moveaxis(rgb_dataset.read(), 0, -1)[:, :, :3]
+
+        if resize_xy:
+            rgb_array = np.array(resize_2d(rgb_array, s1=resize_xy[0], s2=resize_xy[1]),
+                                 dtype=np.uint8)
+
+        loaded_sources["rgb"] = rgb_array
+
+    if "cir" in sources_to_read:
+        cir_path_jpg = os.path.join(paths_dict['cir_DIR'], key + ".jpg")
+        cir_path_png = os.path.join(paths_dict['cir_DIR'], key + ".png")
+        cir_path_tif = os.path.join(paths_dict['cir_DIR'], key + ".tif")
+
+        if os.path.exists(cir_path_jpg):
+            cir_array = np.array(cir_path_jpg, dtype=np.uint8)
+        elif os.path.exists(cir_path_png):
+            cir_array = np.array(cir_path_png, dtype=np.uint8)
+        elif os.path.exists(cir_path_tif):
+            cir_dataset = rasterio.open(cir_path_tif, dtype=np.uint8)
+            cir_array = np.moveaxis(cir_dataset.read(), 0, -1)[:, :, :3]
+
+        if resize_xy:
+            cir_array = np.array(resize_2d(cir_array, s1=resize_xy[0], s2=resize_xy[1]),
+                                 dtype=np.uint8)
+
+        loaded_sources["cir"] = cir_array
+
+    if 'dsm' in sources_to_read:
+        dsm_path_tif = os.path.join(paths_dict['DSM_DIR'], key + ".tif")
+        dsm_dataset = rasterio.open(dsm_path_tif)
+        dsm_array = dsm_dataset.read(1)
+
+        if resize_xy:
+            dsm_array = np.array(resize_2d(dsm_array, s1=resize_xy[0], s2=resize_xy[1]),
+                                 dtype=np.uint8)
+
+        loaded_sources["dsm"] = dsm_array
+
+    if 'dtm' in sources_to_read:
+        dtm_path_tif = os.path.join(paths_dict['DTM_DIR'], key + ".tif")
+        dtm_dataset = rasterio.open(dtm_path_tif)
+        dtm_array = dtm_dataset.read(1)
+
+        if resize_xy:
+            dtm_array = np.array(resize_2d(dtm_array, s1=resize_xy[0], s2=resize_xy[1]),
+                                 dtype=np.uint8)
+
+        loaded_sources["dtm"] = dtm_array
+
+    return loaded_sources
+
+
+def bgr_to_rgb(rgb_array):
+    """convert bgr image to rgb image. Needed because some packages save data in bgr format.
+
+    Args:
+        rgb_array (np.array): bgr array to convert
+
+    Returns:
+        np.array: rgb array
+    """
+    b, g, r = rgb_array[:, :, 0], rgb_array[:, :, 1], rgb_array[:, :, 2]
+    return np.stack([r, g, b], -1)
+
+
+def generate_feature_maps(cfg, model, h5folder, target_folder, overwrite=True, require_labels=True, add_upscaled=False):
+    """Generate feature maps and save the generated feature maps to a hdf5 file. 
+    Feature map outputs are usefull because they can be upsampeld to provide a better context to a segmentation. 
+    In order to keep all the feature maps organized, they are saved back into the h5 file that contains the source data,
+    but under a subgroup name feature_map_<resolution>. Feature maps are an experimental feature. 
+
+    Args:
+        cfg (yacs.config.CfgNode): config to use
+        model (torch.Module): model to use for segmentation
+        h5folder (str): path to hdf5 files
+        target_folder (_type_): where to save resulting feature maps as hdf5 files. 
+        Can be the same as h5folder argument to save to the same file.
+        overwrite (bool, optional): Overwrite previous feature maps with the same name if present. Defaults to True.
+        require_labels (bool, optional): Try to also read the original label files and save them to feature map resolution. Defaults to True.
+        add_upscaled (bool, optional): resize the feature map to cfg.DATASET.DEFAULT_BLOCK_SIZE and save it to the hdf5 file
+        This way the resulting feature map can be used to as input to a finer resolution model without having to resize on the fly. Defaults to False.
+    """
+    h5paths = glob.glob(os.path.join(h5folder) + "/*.h5")
+    shuffle(h5paths)
+    sources_to_use = cfg.MAPPINGS.SAMPLE_CHANNEL_COMBINATIONS[cfg.DATASET.INPUT_STACK]
+    sources_to_use = [s.lower() for s in sources_to_use]
+
+    skipped_blocks = []
+
+    dataset_name = ""
+    group_name = ""
+    if cfg.DATASET.BLOCK_SIZE != cfg.DATASET.DEFAULT_BLOCK_SIZE:
+        group_name = f"resized_{cfg.DATASET.BLOCK_SIZE}"
+        dataset_name = group_name + "/feature_map"
+
+    for h5_filepath in tqdm(h5paths, desc='generating featuremaps', position=0):
+        # first check if the file already has the desired key
+        key = os.path.basename(h5_filepath).rsplit('.', 1)[0]
+
+        with File(os.path.join(target_folder, f'{key}.h5'), 'a') as f:
+            if dataset_name not in f.keys():
+                # load the tile
+                image, label = load_h5_block(h5_filepath, sources_to_use, resize_xy=(
+                    cfg.DATASET.BLOCK_SIZE, cfg.DATASET.BLOCK_SIZE), group_name=group_name, return_label=require_labels)
+
+                # segment the tile and get feature map
+                segmented_tile = segment_tile(model, image, cfg.DATASET.NUM_CLASSES, cfg.TRAIN.IMAGE_SIZE,
+                                              cfg.INFERENCE.BATCH_SIZE, cfg.DATASET.INPUT_STACK, collapse=False, tqdm_pos=1)
+                segmented_tile = segmented_tile.detach().cpu().numpy()
+
+                # change to channel last
+                segmented_tile = np.moveaxis(segmented_tile, 0, -1)
+
+                # save to h5 file
+                chunksize = 256
+                f.create_dataset(dataset_name, data=segmented_tile.astype(np.float32),
+                                 chunks=(chunksize, chunksize, segmented_tile.shape[-1]),
+                                 compression='lzf')
+
+                if add_upscaled:
+                    segmented_tile = resize_2d(
+                        segmented_tile, s1=cfg.DATASET.DEFAULT_BLOCK_SIZE, s2=cfg.DATASET.DEFAULT_BLOCK_SIZE)
+                    f.create_dataset(dataset_name + "_upscaled", data=segmented_tile.astype(np.float32),
+                                     chunks=(chunksize, chunksize, segmented_tile.shape[-1]),
+                                     compression='lzf')
+
+            elif (dataset_name in f.keys()) and overwrite:
+                # load the tile
+                image, label = load_h5_block(h5_filepath, sources_to_use, resize_xy=(
+                    cfg.DATASET.BLOCK_SIZE, cfg.DATASET.BLOCK_SIZE), group_name=group_name, return_label=require_labels)
+
+                # segment the tile and get feature map
+                segmented_tile = segment_tile(model, image, cfg.DATASET.NUM_CLASSES, cfg.TRAIN.IMAGE_SIZE,
+                                              cfg.INFERENCE.BATCH_SIZE, cfg.DATASET.INPUT_STACK, collapse=False)
+                segmented_tile = segmented_tile.detach().cpu().numpy()
+
+                # change to channel last
+                segmented_tile = np.moveaxis(segmented_tile, 0, -1)
+
+                # save to h5 file
+                chunksize = 256
+                del f[dataset_name]
+
+                f.create_dataset(dataset_name, data=segmented_tile.astype(np.float32),
+                                 chunks=(chunksize, chunksize, segmented_tile.shape[-1]),
+                                 compression='lzf')
+
+                if add_upscaled:
+                    segmented_tile = resize_2d(segmented_tile, s1=10000, s2=10000)
+                    del f[dataset_name + "_upscaled"]
+
+                    f.create_dataset(dataset_name + "_upscaled", data=segmented_tile.astype(np.float32),
+                                     chunks=(chunksize, chunksize, segmented_tile.shape[-1]),
+                                     compression='lzf')
+
+            elif (dataset_name in f.keys()) and not overwrite:
+                skipped_blocks.append(key)
+                # print(f"dataset: {dataset_name} already existis in target: {os.path.join(target_folder, f'{key}.h5')}, skipping dataset creation")
+
+    print(f"Completed feature map generation")
+    print(f"skipped {len(skipped_blocks)} blocks that were already processed.")
+
+
+def h5dataset_name_from_cfg(cfg):
+    """add group name to h5 keys if required. Checks the cfg of the run and if the 
+    default block size and given block size are different return the original group name
+    otherwise return an empty string.
+
+    Args:
+        (cfg): yacs.config.CfgNode: cfg to get the sizes from
+
+    Returns:
+        str: string containing the group name if the sizes are different, empty string otherwise
+    """
+    additional_group_name = ""
+    if cfg.DATASET.BLOCK_SIZE != cfg.DATASET.DEFAULT_BLOCK_SIZE:
+        additional_group_name = f"resized_{cfg.DATASET.BLOCK_SIZE}"
+
+    return additional_group_name
+
+
+def cfgnode_to_dict(cfg_node, key_list=[]):
+    """ Convert a config node to dictionary, 
+    taken from https://github.com/rbgirshick/yacs/issues/19 
+    """
+    # little weird to import here but it keeps the global space clear.
+    from yacs.config import CfgNode
+    _VALID_TYPES = {tuple, list, str, int, float, bool}
+
+    if not isinstance(cfg_node, CfgNode):
+        if type(cfg_node) not in _VALID_TYPES:
+            print("Key {} with value {} is not a valid type; valid types: {}".format(
+                ".".join(key_list), type(cfg_node), _VALID_TYPES), )
+        return cfg_node
+    else:
+        cfg_dict = dict(cfg_node)
+        for k, v in cfg_dict.items():
+            cfg_dict[k] = cfgnode_to_dict(v, key_list + [k])
+        return cfg_dict
