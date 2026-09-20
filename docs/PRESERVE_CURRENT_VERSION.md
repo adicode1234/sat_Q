@@ -8,8 +8,8 @@ walkthrough video, and local model checkpoints. Large assets use Git LFS.
 
 ```sh
 git lfs install
-git clone https://github.com/adicode1234/sat_Q.git
-cd sat_Q
+git clone https://github.com/adicode1234/Query_sat.git
+cd Query_sat
 git lfs pull
 python3 scripts/verify_release.py
 ```
