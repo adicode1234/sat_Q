@@ -265,10 +265,34 @@ const PHRASE_DICTIONARY: Array<{ en: RegExp; hi: string; bn: string }> = [
   { en: /^Not Present$/gi, hi: "अनुपस्थित", bn: "অনুপস্থিত" },
   { en: /^Clear$/gi, hi: "स्पष्ट", bn: "পরিষ্কার" },
   { en: /^Detected$/gi, hi: "पहचाना गया", bn: "শনাক্ত" },
+  { en: /^Winding blue linear feature \(river-like\)$/gi, hi: "घुमावदार नीला रेखीय चैनल (नदी के समान)", bn: "বাঁকানো নীল রৈখিক চ্যানেল (নদীর মতো)" },
+  { en: /^Green background area$/gi, hi: "हरा पृष्ठभूमि क्षेत्र (प्राकृतिक वनस्पति / कृषि)", bn: "সবুজ পটভূমি অঞ্চল (গাছপালা / কৃষিজমি)" },
+  { en: /^Orange \/ reddish small elements along the edge of the blue feature$/gi, hi: "नीले चैनल के किनारे नारंगी / लाल रंग के छोटे तत्व (संरचनाएं या नौकाएं)", bn: "নীল খালের কিনারায় কমলা / লালচে ক্ষুদ্র উপাদান (কাঠামো বা নৌকা)" },
+  { en: /^Darker green rectangular \/ triangular shape in upper right$/gi, hi: "ऊपरी दाहिने हिस्से में गहरे हरे रंग का आयताकार / त्रिकोणीय क्षेत्र", bn: "উপরের ডানদিকে গাঢ় সবুজ আয়তাকার / ত্রিভুজাকার অংশ" },
+  { en: /^Light blue \/ whitish elongated area at lower left$/gi, hi: "निचले बाएं हिस्से में हल्का नीला / सफेद बढ़ा हुआ क्षेत्र", bn: "নীচের বামে হালকা নীল / সাদা প্রসারিত এলাকা" },
+  { en: /^The real-world nature of the orange elements \(they could be boats, buildings, or artifacts; the low resolution and lack of scale make this impossible to confirm\)$/gi, hi: "नारंगी तत्वों की वास्तविक प्रकृति (कम रिज़ॉल्यूशन के कारण नौकाएं, इमारतें या कलाकृतियां हो सकती हैं)", bn: "কমলা উপাদানগুলির প্রকৃত রূপ (কম রেজোলিউশনের কারণে নৌকা, ভবন বা শৈল্পিক ত্রুটি হতে পারে)" },
+  { en: /^The direction of flow of the river$/gi, hi: "नदी के जल प्रवाह की सटीक दिशा", bn: "নদীর জলের প্রবাহের সঠিক দিক" },
+  { en: /^The specific type of vegetation or land use represented by the green areas$/gi, hi: "हरे क्षेत्रों द्वारा दर्शाई गई विशिष्ट वनस्पति या भूमि उपयोग का प्रकार", bn: "সবুজ অঞ্চলের নির্দিষ্ট গাছপালা বা ফসলের ধরণ" },
+  { en: /^Any temporal or contextual information \(when or where this was taken\)$/gi, hi: "समय अथवा संदर्भ संबंधी विशिष्ट जानकारी (छवि किस सटीक समय पर ली गई)", bn: "সময় বা প্রেক্ষাপট সংক্রান্ত তথ্য (ছবিটি কোন সুনির্দিষ্ট সময়ে তোলা)" },
 ];
 
 const DYNAMIC_CACHE: Record<string, string> = {};
 const PENDING_KEYS = new Set<string>();
+
+export async function browserTranslateSingle(text: string, target: string): Promise<string> {
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${target}&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && Array.isArray(data[0])) {
+        const trans = data[0].map((p: any) => (p && p[0] ? p[0] : '')).join('');
+        if (trans && trans.trim()) return trans;
+      }
+    }
+  } catch (_) {}
+  return text;
+}
 
 export function getCachedTranslation(text: string, lang: AppLanguage): string | null {
   if (!text || lang === 'en') return text;
@@ -311,17 +335,34 @@ export async function fetchDynamicTranslations(texts: string[], lang: AppLanguag
     if (res.ok) {
       const data = await res.json();
       const translations: string[] = data.translations || [];
-      toFetch.forEach((orig, idx) => {
-        const trans = translations[idx] || orig;
+      for (let idx = 0; idx < toFetch.length; idx++) {
+        const orig = toFetch[idx];
+        let trans = translations[idx] || orig;
+        if (trans === orig) {
+          trans = await browserTranslateSingle(orig, lang);
+        }
         const key = `${lang}:${orig}`;
         DYNAMIC_CACHE[key] = trans;
         PENDING_KEYS.delete(key);
         result[orig] = trans;
-      });
+      }
+    } else {
+      for (const orig of toFetch) {
+        const trans = await browserTranslateSingle(orig, lang);
+        const key = `${lang}:${orig}`;
+        DYNAMIC_CACHE[key] = trans;
+        PENDING_KEYS.delete(key);
+        result[orig] = trans;
+      }
     }
   } catch (e) {
-    console.warn("Dynamic translation fetch notice:", e);
-    toFetch.forEach(orig => PENDING_KEYS.delete(`${lang}:${orig}`));
+    for (const orig of toFetch) {
+      const trans = await browserTranslateSingle(orig, lang);
+      const key = `${lang}:${orig}`;
+      DYNAMIC_CACHE[key] = trans;
+      PENDING_KEYS.delete(key);
+      result[orig] = trans;
+    }
   }
 
   return result;

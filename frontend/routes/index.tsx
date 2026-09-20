@@ -1166,6 +1166,42 @@ const DEFAULT_HOWRAH_RESULT: SatResult = {
     { model: "Grounding DINO", mode: "Spatial Detection", status: "Active", neural_confidence: 0.95 },
     { model: "NDWI Engine", mode: "Spectral Verification", status: "Active", neural_confidence: 0.96 },
   ],
+  translations: {
+    hi: {
+      description: "मल्टीस्पेक्ट्रल उपग्रह अवलोकन उच्च न्यूरल विश्वास के साथ एक प्रमुख नदी जल चैनल (20.8% कवरेज) की पुष्टि करता है, जो निरंतर प्राकृतिक वनस्पति छत्र (53.4%) और स्थानीय निर्मित बुनियादी ढांचे (25.8%) से घिरा हुआ है। सतही जल सीमाएं स्थिर, सुस्पष्ट और NDWI स्पेक्ट्रल अवशोषण द्वारा सत्यापित हैं।",
+      answer: "केंद्रीय जल निकासी क्षेत्र में नदी का जल चैनल स्पष्ट रूप से सीमांकित है। सतही जल सीमाएं स्थिर, सुस्पष्ट और NDWI स्पेक्ट्रल अवशोषण द्वारा सत्यापित हैं।",
+      visible_features: [
+        "घुमावदार नीला रेखीय चैनल (नदी के समान)",
+        "हरा पृष्ठभूमि क्षेत्र (प्राकृतिक वनस्पति / कृषि)",
+        "नीले चैनल के किनारे नारंगी / लाल रंग के छोटे तत्व (संरचनाएं या नौकाएं)",
+        "ऊपरी दाहिने हिस्से में गहरे हरे रंग का आयताकार / त्रिकोणीय क्षेत्र",
+        "निचले बाएं हिस्से में हल्का नीला / सफेद बढ़ा हुआ क्षेत्र"
+      ],
+      uncertainties: [
+        "नारंगी तत्वों की वास्तविक प्रकृति (कम रिज़ॉल्यूशन के कारण नौकाएं, इमारतें या कलाकृतियां हो सकती हैं)",
+        "नदी के जल प्रवाह की सटीक दिशा",
+        "हरे क्षेत्रों द्वारा दर्शाई गई विशिष्ट वनस्पति या भूमि उपयोग का प्रकार",
+        "समय अथवा संदर्भ संबंधी विशिष्ट जानकारी (छवि किस सटीक समय पर ली गई)"
+      ]
+    },
+    bn: {
+      description: "মাল্টিস্পেকট্রাল স্যাটেলাইট পর্যবেক্ষণ উচ্চ নিউরাল আস্থার সাথে একটি প্রধান নদীর জলপথ (২০.৮% এলাকা) নিশ্চিত করে, যা সংলগ্ন প্রাকৃতিক বনভূমি (৫৩.৪%) এবং স্থানীয় জনবসতিপূর্ণ অবকাঠামো (২৫.৮%) দ্বারা বেষ্টিত। পৃষ্ঠীয় জলের সীমানা স্থিতিশীল, সুস্পষ্ট এবং NDWI বর্ণালী শোষণ দ্বারা যাচাইকৃত।",
+      answer: "কেন্দ্রীয় নিষ্কাশন অঞ্চল জুড়ে নদীর জলপথ পরিষ্কারভাবে চিহ্নিত। পৃষ্ঠীয় জলের সীমানা স্থিতিশীল, সুস্পষ্ট এবং NDWI বর্ণালী শোষণ দ্বারা যাচাইকৃত।",
+      visible_features: [
+        "বাঁকানো নীল রৈখিক চ্যানেল (নদীর মতো)",
+        "সবুজ পটভূমি অঞ্চল (গাছপালা / কৃষিজমি)",
+        "নীল খালের কিনারায় কমলা / লালচে ক্ষুদ্র উপাদান (কাঠামো বা নৌকা)",
+        "উপরের ডানদিকে গাঢ় সবুজ আয়তাকার / ত্রিভুজাকার অংশ",
+        "নীচের বামে হালকা নীল / সাদা প্রসারিত এলাকা"
+      ],
+      uncertainties: [
+        "কমলা উপাদানগুলির প্রকৃত রূপ (কম রেজোলিউশনের কারণে নৌকা, ভবন বা শৈল্পিক ত্রুটি হতে পারে)",
+        "নদীর জলের প্রবাহের সঠিক দিক",
+        "সবুজ অঞ্চলের নির্দিষ্ট গাছপালা বা ফসলের ধরণ",
+        "সময় বা প্রেক্ষাপট সংক্রান্ত তথ্য (ছবিটি কোন সুনির্দিষ্ট সময়ে তোলা)"
+      ]
+    }
+  } as any,
 };
 
 export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) {
@@ -2473,13 +2509,13 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
   const cloudDescription = useMemo(() => {
     if (activeLang === 'en' || !rawCloudDesc) return rawCloudDesc;
     if (preTrans?.description) return preTrans.description;
-    return getCachedTranslation(rawCloudDesc, activeLang) || rawCloudDesc;
+    return getCachedTranslation(rawCloudDesc, activeLang) || translateText(rawCloudDesc, activeLang);
   }, [rawCloudDesc, activeLang, preTrans?.description, translationTick]);
 
   const cloudAnswer = useMemo(() => {
     if (activeLang === 'en' || !rawCloudAnswer) return rawCloudAnswer;
     if (preTrans?.answer) return preTrans.answer;
-    return getCachedTranslation(rawCloudAnswer, activeLang) || rawCloudAnswer;
+    return getCachedTranslation(rawCloudAnswer, activeLang) || translateText(rawCloudAnswer, activeLang);
   }, [rawCloudAnswer, activeLang, preTrans?.answer, translationTick]);
 
   const cloudFeatures: string[] = useMemo(() => {
@@ -2494,7 +2530,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
           ? result.scene_inventory.present.map((p: any) => typeof p === 'string' ? p : p.name)
           : [];
     if (activeLang === 'en') return raw;
-    return raw.map((f: string) => getCachedTranslation(f, activeLang) || f);
+    return raw.map((f: string) => getCachedTranslation(f, activeLang) || translateText(f, activeLang));
   }, [result, cloudInfo, activeLang, preTrans?.visible_features, translationTick]);
 
   const cloudUncertainties: string[] = useMemo(() => {
@@ -2507,7 +2543,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
         ? cloudInfo.uncertainties
         : [];
     if (activeLang === 'en') return raw;
-    return raw.map((u: string) => getCachedTranslation(u, activeLang) || u);
+    return raw.map((u: string) => getCachedTranslation(u, activeLang) || translateText(u, activeLang));
   }, [result, cloudInfo, activeLang, preTrans?.uncertainties, translationTick]);
 
   const parseDetectedFeature = (feat: any) => {
@@ -3005,6 +3041,9 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     const fullText = parts.filter(Boolean).join(". ").trim();
     if (!fullText) return;
 
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    }
     window.speechSynthesis.cancel();
 
     // Clean markdown, symbols, brackets for natural audio reading
@@ -3018,8 +3057,12 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     const langCode = activeLang === 'hi' ? 'hi-IN' : activeLang === 'bn' ? 'bn-IN' : 'en-US';
     utterance.lang = langCode;
 
-    const voices = window.speechSynthesis.getVoices();
-    const match = voices.find(v => v.lang === langCode || v.lang.replace('_', '-').toLowerCase().startsWith(langCode.slice(0, 2).toLowerCase()));
+    let voices = window.speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) {
+      window.speechSynthesis.getVoices();
+      voices = window.speechSynthesis.getVoices();
+    }
+    const match = voices?.find(v => v.lang === langCode || v.lang.replace('_', '-').toLowerCase().startsWith(langCode.slice(0, 2).toLowerCase()));
     if (match) {
       utterance.voice = match;
     }
@@ -3031,7 +3074,11 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
 
-    window.speechSynthesis.speak(utterance);
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (_) {
+      setIsSpeaking(false);
+    }
   };
 
   const renderHudCallouts = () => {
@@ -3225,6 +3272,37 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
               <span className="satt-neon-dot" />
               {t('systemOnline', activeLang)}
             </span>
+
+            {/* Direct Language Switcher (EN | हिन्दी | বাংলা) */}
+            <div className="satt-lang-selector-group" style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: '8px', padding: '2px', gap: '3px', marginLeft: '2px' }}>
+              <button
+                type="button"
+                className={cn("satt-lang-btn", activeLang === 'en' && "satt-lang-btn-active")}
+                onClick={() => handleSetLang('en')}
+                title="Switch to English"
+                style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 700, borderRadius: '5px', cursor: 'pointer' }}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                className={cn("satt-lang-btn", activeLang === 'hi' && "satt-lang-btn-active")}
+                onClick={() => handleSetLang('hi')}
+                title="हिन्दी में अनुवाद करें"
+                style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 700, borderRadius: '5px', cursor: 'pointer' }}
+              >
+                हिन्दी
+              </button>
+              <button
+                type="button"
+                className={cn("satt-lang-btn", activeLang === 'bn' && "satt-lang-btn-active")}
+                onClick={() => handleSetLang('bn')}
+                title="বাংলায় অনুবাদ করুন"
+                style={{ padding: '3px 8px', fontSize: '11px', fontWeight: 700, borderRadius: '5px', cursor: 'pointer' }}
+              >
+                বাংলা
+              </button>
+            </div>
 
 
             {/* Profile Avatar & Interactive Account Menu */}
