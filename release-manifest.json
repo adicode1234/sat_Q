@@ -244,7 +244,7 @@
     "gateway/alignment.py": "5a4d2d7403abf71aff8a8dfe8bd8281c49da152d0e54b35f27ea9184ec960ffc",
     "gateway/analysis_report.py": "22ecc9da69275b14aba3ca5b353d0dd0444903fc0b173907843274678fe92437",
     "gateway/app.py": "e07a9c67d57c19a543ef73af536edbabfe9776366cef148609f9e267f6733b3e",
-    "gateway/auth.py": "37d4f91f2fce3f4242a4b4da9dd727eeeaaf935d4d389d6fd45cf433a22b8b0f",
+    "gateway/auth.py": "78471490787bdd0ddcdd3f664e3e413eea55e49f322c9cb93b5a72606d9f0475",
     "gateway/cloud_setup.py": "ff72d540f88557c159b35a260c083336d707f9ca5e1c9b5cf1dbfa8d3d48bea5",
     "gateway/context.py": "f830e5b0b7c1e73ec7f142299a76c331d6abfda56bc13ffb446991c2c8a55cd6",
     "gateway/contracts.py": "74882437ecd9a334c0e8f099b47b275f864929cf0bc648e0f79e5154ceb18263",

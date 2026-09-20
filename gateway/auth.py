@@ -1,5 +1,4 @@
-"""Supabase authentication via same-origin, HttpOnly session cookies."""
-import os
+import asyncio, logging, os
 from urllib.parse import urlsplit
 
 import httpx
@@ -30,12 +29,19 @@ async def provider(method, path, *, token=None, body=None):
     headers = {'apikey': os.environ['SUPABASE_PUBLISHABLE_KEY']}
     if token:
         headers['Authorization'] = f'Bearer {token}'
-    try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            response = await client.request(method, os.environ['SUPABASE_URL'].rstrip('/') + '/auth/v1/' + path,
-                                            headers=headers, json=body)
-    except httpx.HTTPError:
-        raise HTTPException(503, 'Authentication service is unavailable. Please try again.') from None
+    for attempt in range(2):
+        try:
+            async with httpx.AsyncClient(timeout=45) as client:
+                response = await client.request(method, os.environ['SUPABASE_URL'].rstrip('/') + '/auth/v1/' + path,
+                                                headers=headers, json=body)
+                break
+        except httpx.HTTPError as exc:
+            if attempt == 0:
+                logging.info(f"[Auth] Supabase attempt 1 failed ({exc}), retrying in 1.5s...")
+                await asyncio.sleep(1.5)
+                continue
+            logging.error(f"[Auth] Supabase auth request failed: {exc}")
+            raise HTTPException(503, 'Authentication service is unavailable. Please try again.') from None
     if response.is_error:
         code = response.json().get('error_code', '') if 'json' in response.headers.get('content-type', '') else ''
         message = {
