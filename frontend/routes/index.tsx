@@ -3920,7 +3920,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
                       title="हिन्दी"
                       style={{ flex: 1.2, justifyContent: 'center', padding: '6px 8px' }}
                     >
-                      🇮🇳 हिन्दी
+                      हिन्दी
                     </button>
                     <button
                       type="button"
@@ -3929,7 +3929,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
                       title="বাংলা"
                       style={{ flex: 1.2, justifyContent: 'center', padding: '6px 8px' }}
                     >
-                      🇧🇩 বাংলা
+                      বাংলা
                     </button>
                   </div>
                 </div>

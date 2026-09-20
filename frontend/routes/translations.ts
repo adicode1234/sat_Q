@@ -575,13 +575,13 @@ export const HELP_TOPICS: Record<string, HelpTopicInfo> = {
       en: [
         "Click the Mic button once to start listening.",
         "Speak clearly into your microphone.",
-        "Toggle between '🌐 English' and '🇮🇳 हिन्दी' for accurate recognition.",
+        "Toggle between 'English' and 'हिन्दी' for accurate recognition.",
         "Click 'Done ✓' or tap the mic again when finished."
       ],
       hi: [
         "सुनना शुरू करने के लिए माइक बटन पर एक बार क्लिक करें।",
         "अपने माइक्रोफ़ोन में स्पष्ट रूप से बोलें।",
-        "सटीक पहचान के लिए '🌐 English' और '🇮🇳 हिन्दी' के बीच स्विच करें।",
+        "सटीक पहचान के लिए 'English' और 'हिन्दी' के बीच स्विच करें।",
         "बोलने के बाद 'Done ✓' पर क्लिक करें।"
       ],
       bn: [
