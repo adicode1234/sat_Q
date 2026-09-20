@@ -5,14 +5,23 @@ _CACHE = {}
 def translate_single(text: str, target: str) -> str:
     if not text or not isinstance(text, str) or not text.strip() or target not in ('hi', 'bn'):
         return text
-    cache_key = (text.strip(), target)
+    clean = text.strip()
+    cache_key = (clean, target)
     if cache_key in _CACHE:
         return _CACHE[cache_key]
+
+    # Preserve multi-paragraph formatting by translating paragraphs individually
+    if '\n\n' in clean:
+        paragraphs = clean.split('\n\n')
+        translated_paras = [translate_single(p.strip(), target) for p in paragraphs if p.strip()]
+        result = '\n\n'.join(translated_paras)
+        _CACHE[cache_key] = result
+        return result
 
     try:
         res = httpx.get(
             'https://translate.googleapis.com/translate_a/single',
-            params={'client': 'gtx', 'sl': 'auto', 'tl': target, 'dt': 't', 'q': text.strip()},
+            params={'client': 'gtx', 'sl': 'auto', 'tl': target, 'dt': 't', 'q': clean},
             timeout=10.0
         )
         if res.status_code == 200:

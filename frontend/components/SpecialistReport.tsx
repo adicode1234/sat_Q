@@ -1,3 +1,5 @@
+import { translateText, type AppLanguage } from "../routes/translations";
+
 export type AnalysisReport = {
   query: string; task: string; specialist: string; answer: string;
   observations: Array<{text: string; image_ids: string[]; kind: string}>;
@@ -8,7 +10,7 @@ export type AnalysisReport = {
   execution_summary: Record<string, unknown>;
 };
 
-function renderPointWise(text: string) {
+function renderPointWise(text: string, lang: AppLanguage = 'en') {
   if (!text) return null;
   // Split on bullets, (1)/(2), newlines, or numbered lists
   let points = text
@@ -26,19 +28,20 @@ function renderPointWise(text: string) {
       <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {points.map((pt, idx) => (
           <li key={idx} style={{ lineHeight: '1.65', fontSize: '14.5px', color: '#f8fafc' }}>
-            {pt}
+            {translateText(pt, lang)}
           </li>
         ))}
       </ul>
     );
   }
-  return <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.65', fontSize: '15px', color: '#f8fafc', margin: 0 }}>{text}</p>;
+  return <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.65', fontSize: '15px', color: '#f8fafc', margin: 0 }}>{translateText(text, lang)}</p>;
 }
 
-export default function SpecialistReport({report}: {report: AnalysisReport}) {
+export default function SpecialistReport({report, lang = 'en'}: {report: AnalysisReport; lang?: AppLanguage}) {
   const isCloudSpecialist = report.specialist?.toLowerCase().includes('cloud') || report.specialist?.toLowerCase().includes('openrouter');
 
   if (isCloudSpecialist) {
+    const findingsLabel = lang === 'hi' ? '🎯 प्रत्यक्ष निष्कर्ष' : lang === 'bn' ? '🎯 সরাসরি ফলাফল' : '🎯 Direct Findings';
     return (
       <section className="analysis-summary" aria-label="SatQuery cloud report" style={{ padding: '4px 0' }}>
         <div style={{
@@ -50,26 +53,30 @@ export default function SpecialistReport({report}: {report: AnalysisReport}) {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
             <span style={{ fontSize: '12px', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-              🎯 Direct Findings
+              {findingsLabel}
             </span>
           </div>
-          {renderPointWise(report.answer)}
+          {renderPointWise(report.answer, lang)}
         </div>
       </section>
     );
   }
 
+  const directAnswerLabel = lang === 'hi' ? 'प्रत्यक्ष उत्तर' : lang === 'bn' ? 'সরাসরি উত্তর' : 'Direct answer';
+  const obsLabel = lang === 'hi' ? 'अवलोकन' : lang === 'bn' ? 'পর্যবেক্ষণ' : 'Observations';
+  const uncLabel = lang === 'hi' ? 'अनिश्चितताएँ एवं सीमाएँ' : lang === 'bn' ? 'অনিশ্চয়তা ও সীমাবদ্ধতা' : 'Uncertainties & Limitations';
+
   return <section className="analysis-summary" aria-label="SatQuery specialist report">
     <h2>{report.specialist} · {report.task.replaceAll('_', ' ')}</h2>
-    <p><strong>Query:</strong> {report.query}</p>
+    <p><strong>{lang === 'hi' ? 'प्रश्न:' : lang === 'bn' ? 'অনুসন্ধান:' : 'Query:'}</strong> {translateText(report.query, lang)}</p>
     <div style={{ background: 'rgba(2, 132, 199, 0.08)', border: '1px solid rgba(2, 132, 199, 0.3)', borderRadius: '8px', padding: '12px 16px', margin: '12px 0' }}>
-      <h3 style={{ margin: '0 0 6px', color: '#38bdf8', fontSize: '13px' }}>Direct answer</h3>
-      <p style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: '14.5px', color: '#f1f5f9' }}>{report.answer}</p>
+      <h3 style={{ margin: '0 0 6px', color: '#38bdf8', fontSize: '13px' }}>{directAnswerLabel}</h3>
+      <p style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: '14.5px', color: '#f1f5f9' }}>{translateText(report.answer, lang)}</p>
     </div>
     {report.observations.length > 0 && (
       <div>
-        <h3>Observations</h3>
-        <ul>{report.observations.map((item, i) => <li key={i}>{item.text} ({item.kind}; {item.image_ids.join(', ')})</li>)}</ul>
+        <h3>{obsLabel}</h3>
+        <ul>{report.observations.map((item, i) => <li key={i}>{translateText(item.text, lang)} ({item.kind}; {item.image_ids.join(', ')})</li>)}</ul>
       </div>
     )}
     {report.spatial_evidence.length > 0 && (
@@ -82,12 +89,12 @@ export default function SpecialistReport({report}: {report: AnalysisReport}) {
       .filter(([_, items]) => items && items.length > 0)
       .map(([key, items]) => <div key={key}>
         <h3>{key.toUpperCase()} evidence</h3>
-        <ul>{items.map((item, i) => <li key={i}>{item.text} ({item.kind}; {item.image_ids.join(', ')})</li>)}</ul>
+        <ul>{items.map((item, i) => <li key={i}>{translateText(item.text, lang)} ({item.kind}; {item.image_ids.join(', ')})</li>)}</ul>
       </div>)}
     {report.uncertainty.length > 0 && (
       <details style={{ marginTop: '8px' }}>
-        <summary style={{ cursor: 'pointer', color: '#94a3b8', fontSize: '12px' }}>Uncertainties & Limitations ({report.uncertainty.length})</summary>
-        <ul style={{ marginTop: '6px' }}>{report.uncertainty.map((s, i) => <li key={i} style={{ color: '#cbd5e1', fontSize: '12px' }}>{s}</li>)}</ul>
+        <summary style={{ cursor: 'pointer', color: '#94a3b8', fontSize: '12px' }}>{uncLabel} ({report.uncertainty.length})</summary>
+        <ul style={{ marginTop: '6px' }}>{report.uncertainty.map((s, i) => <li key={i} style={{ color: '#cbd5e1', fontSize: '12px' }}>{translateText(s, lang)}</li>)}</ul>
       </details>
     )}
   </section>;

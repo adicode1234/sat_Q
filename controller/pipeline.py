@@ -326,7 +326,7 @@ def run_pipeline(paths,options,scenario,query,params=None,emit=None,classifier=N
     except Exception:
         pass
     event('report',result='Answer, evidence, trust breakdown and trace prepared')
-    return {**fused,'query_id':analysis_id,'query':query,'parent_query_id':parent_id,'decision':gate,'consensus':consensus,'consensus_details':consensus_details,'temporal_analysis':temporal_summary,'fusion_analysis':fusion_summary,'optical_quality_gate':opt_gate,'spectral_indices':spectral_indices,'trust_explanation':explanation,
+    final_output = {**fused,'query_id':analysis_id,'query':query,'parent_query_id':parent_id,'decision':gate,'consensus':consensus,'consensus_details':consensus_details,'temporal_analysis':temporal_summary,'fusion_analysis':fusion_summary,'optical_quality_gate':opt_gate,'spectral_indices':spectral_indices,'trust_explanation':explanation,
             'provenance':processing_provenance(bundle,outputs),'timings':timings,'task':task,'scenario':scenario,'trust_score':verification['trust_score'],'visual_confidence':v_conf,
             'scene_inventory':inventory,'executive_answer':fused['answer'],
             'visible_features':inventory.get('visible_features',[]),'uncertainties':inventory.get('uncertainties',[]),'present':inventory.get('present',[]),'absent':inventory.get('absent',[]),
@@ -337,3 +337,25 @@ def run_pipeline(paths,options,scenario,query,params=None,emit=None,classifier=N
                           'Synthetic land-cover and grounding fallbacks are disabled for real uploads.',
                           'The small CDVQA Siamese model saw only two training image pairs; change masks measure appearance changes, not their cause.',
                           'Unstructured VQA suggestions are auxiliary and unverified.']}
+    try:
+        from gateway.translator import translate_single, translate_texts
+        ans_text = final_output.get('executive_answer') or final_output.get('answer') or ''
+        vf = [f['name'] if isinstance(f, dict) else str(f) for f in final_output.get('visible_features', [])]
+        unc = [u['name'] if isinstance(u, dict) else str(u) for u in final_output.get('uncertainties', [])]
+        final_output['translations'] = {
+            'hi': {
+                'description': translate_single(ans_text, 'hi'),
+                'answer': translate_single(ans_text, 'hi'),
+                'visible_features': translate_texts(vf, 'hi'),
+                'uncertainties': translate_texts(unc, 'hi')
+            },
+            'bn': {
+                'description': translate_single(ans_text, 'bn'),
+                'answer': translate_single(ans_text, 'bn'),
+                'visible_features': translate_texts(vf, 'bn'),
+                'uncertainties': translate_texts(unc, 'bn')
+            }
+        }
+    except Exception as e:
+        final_output['translations'] = {}
+    return final_output

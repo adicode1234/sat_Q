@@ -144,7 +144,7 @@ async def logout(request: Request):
 async def protect_workspace(request, call_next):
     path = request.url.path
     protected = (path.startswith(('/api/', '/reports/')) or path in ('/vision-setup', '/review-queue'))
-    if protected and not path.startswith('/api/auth/') and path not in ('/api/health', '/api/config'):
+    if protected and not path.startswith('/api/auth/') and path not in ('/api/health', '/api/config', '/api/translate'):
         try:
             if request.method not in ('GET', 'HEAD', 'OPTIONS'):
                 check_origin(request)

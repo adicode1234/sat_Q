@@ -2463,31 +2463,52 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
   const cloudInfo = (result as any)?.cloud_vision;
   const cloudProvider = cloudInfo?.provider || (result as any)?.provenance?.provider || (result?.interpretation_source === 'ollama' ? "Local Ollama" : "Google Gemini");
   const cloudModel = cloudInfo?.model || (result as any)?.model || "";
-  const cloudDescription = (result as any)?.description || cloudInfo?.description || "";
-  const cloudAnswer = cloudInfo?.answer || (result as any)?.candidate_answer || result?.answer || "";
+  const [translationTick, setTranslationTick] = useState(0);
+
+  const rawCloudDesc = (result as any)?.description || cloudInfo?.description || "";
+  const rawCloudAnswer = cloudInfo?.answer || (result as any)?.candidate_answer || result?.answer || "";
+
+  const preTrans = (result as any)?.translations?.[activeLang];
+
+  const cloudDescription = useMemo(() => {
+    if (activeLang === 'en' || !rawCloudDesc) return rawCloudDesc;
+    if (preTrans?.description) return preTrans.description;
+    return getCachedTranslation(rawCloudDesc, activeLang) || rawCloudDesc;
+  }, [rawCloudDesc, activeLang, preTrans?.description, translationTick]);
+
+  const cloudAnswer = useMemo(() => {
+    if (activeLang === 'en' || !rawCloudAnswer) return rawCloudAnswer;
+    if (preTrans?.answer) return preTrans.answer;
+    return getCachedTranslation(rawCloudAnswer, activeLang) || rawCloudAnswer;
+  }, [rawCloudAnswer, activeLang, preTrans?.answer, translationTick]);
 
   const cloudFeatures: string[] = useMemo(() => {
-    if (Array.isArray((result as any)?.visible_features) && (result as any).visible_features.length > 0) {
-      return (result as any).visible_features;
+    if (activeLang !== 'en' && Array.isArray(preTrans?.visible_features) && preTrans.visible_features.length > 0) {
+      return preTrans.visible_features;
     }
-    if (Array.isArray(cloudInfo?.visible_features) && cloudInfo.visible_features.length > 0) {
-      return cloudInfo.visible_features;
-    }
-    if (result?.scene_inventory?.present && result.scene_inventory.present.length > 0) {
-      return result.scene_inventory.present.map((p: any) => typeof p === 'string' ? p : p.name);
-    }
-    return [];
-  }, [result, cloudInfo]);
+    const raw: string[] = Array.isArray((result as any)?.visible_features) && (result as any).visible_features.length > 0
+      ? (result as any).visible_features
+      : Array.isArray(cloudInfo?.visible_features) && cloudInfo.visible_features.length > 0
+      ? cloudInfo.visible_features
+      : result?.scene_inventory?.present && result.scene_inventory.present.length > 0
+      ? result.scene_inventory.present.map((p: any) => typeof p === 'string' ? p : p.name)
+      : [];
+    if (activeLang === 'en') return raw;
+    return raw.map((f: string) => getCachedTranslation(f, activeLang) || f);
+  }, [result, cloudInfo, activeLang, preTrans?.visible_features, translationTick]);
 
   const cloudUncertainties: string[] = useMemo(() => {
-    if (Array.isArray((result as any)?.uncertainties) && (result as any).uncertainties.length > 0) {
-      return (result as any).uncertainties;
+    if (activeLang !== 'en' && Array.isArray(preTrans?.uncertainties) && preTrans.uncertainties.length > 0) {
+      return preTrans.uncertainties;
     }
-    if (Array.isArray(cloudInfo?.uncertainties) && cloudInfo.uncertainties.length > 0) {
-      return cloudInfo.uncertainties;
-    }
-    return [];
-  }, [result, cloudInfo]);
+    const raw: string[] = Array.isArray((result as any)?.uncertainties) && (result as any).uncertainties.length > 0
+      ? (result as any).uncertainties
+      : Array.isArray(cloudInfo?.uncertainties) && cloudInfo.uncertainties.length > 0
+      ? cloudInfo.uncertainties
+      : [];
+    if (activeLang === 'en') return raw;
+    return raw.map((u: string) => getCachedTranslation(u, activeLang) || u);
+  }, [result, cloudInfo, activeLang, preTrans?.uncertainties, translationTick]);
 
   const parseDetectedFeature = (feat: any) => {
     if (typeof feat !== 'string') {
@@ -2635,7 +2656,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
         </div>
       );
     }
-    if (result?.analysis_report) return <SpecialistReport report={result.analysis_report} />;
+    if (result?.analysis_report) return <SpecialistReport report={result.analysis_report} lang={activeLang} />;
     const rawText = result?.answer || result?.executive_answer || "Run an analysis to see image-derived findings.";
 
     const cleanedText = rawText.replace(/^LOW TRUST — candidate findings only\.\s*/i, '');
@@ -2666,16 +2687,28 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     );
   }, [result?.analysis_report, isCloud, cloudAnswer, cloudDescription, result?.executive_answer, result?.answer, isBitemporal, isWaterQ, isRoadQ, isBuiltQ, visualPercent, trustPercent, currentQuery, activeLang]);
 
-  const [, setTranslationTick] = useState(0);
-
   useEffect(() => {
     if (activeLang === 'en' || !result) return;
 
     // 1. If result has pre-translated translations object from backend
     const pre = (result as any)?.translations?.[activeLang];
     if (pre) {
-      if (pre.description) setCachedTranslation(cloudDescription || '', activeLang, pre.description);
-      if (pre.answer) setCachedTranslation(cloudAnswer || '', activeLang, pre.answer);
+      if (pre.description && rawCloudDesc) {
+        setCachedTranslation(rawCloudDesc, activeLang, pre.description);
+        const origParas = rawCloudDesc.split(/\n\s*\n/).map((p: string) => p.trim()).filter(Boolean);
+        const transParas = pre.description.split(/\n\s*\n/).map((p: string) => p.trim()).filter(Boolean);
+        if (origParas.length === transParas.length) {
+          origParas.forEach((op: string, idx: number) => setCachedTranslation(op, activeLang, transParas[idx]));
+        }
+      }
+      if (pre.answer && rawCloudAnswer) {
+        setCachedTranslation(rawCloudAnswer, activeLang, pre.answer);
+        const origPts = rawCloudAnswer.split(/(?:\s*\(\d+\)\s*|\n\s*[•\-*]\s*|\n\s*\d+\.\s*|\n{2,})/).map((p: string) => p.trim().replace(/^[•\-*]\s*/, '')).filter(Boolean);
+        const transPts = pre.answer.split(/(?:\s*\(\d+\)\s*|\n\s*[•\-*]\s*|\n\s*\d+\.\s*|\n{2,})/).map((p: string) => p.trim().replace(/^[•\-*]\s*/, '')).filter(Boolean);
+        if (origPts.length === transPts.length) {
+          origPts.forEach((op: string, idx: number) => setCachedTranslation(op, activeLang, transPts[idx]));
+        }
+      }
       if (Array.isArray(pre.visible_features) && Array.isArray(cloudFeatures)) {
         cloudFeatures.forEach((vf: string, idx: number) => {
           if (pre.visible_features[idx]) setCachedTranslation(vf, activeLang, pre.visible_features[idx]);
@@ -2686,18 +2719,27 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
           if (pre.uncertainties[idx]) setCachedTranslation(unc, activeLang, pre.uncertainties[idx]);
         });
       }
-      setTranslationTick((v) => v + 1);
       return;
     }
 
     // 2. Fetch on the fly for any new texts
     const textsToTranslate: string[] = [];
-    if (cloudDescription && !getCachedTranslation(cloudDescription, activeLang)) {
-      textsToTranslate.push(cloudDescription);
+    if (rawCloudDesc && !getCachedTranslation(rawCloudDesc, activeLang)) {
+      textsToTranslate.push(rawCloudDesc);
     }
-    if (cloudAnswer && !getCachedTranslation(cloudAnswer, activeLang)) {
-      textsToTranslate.push(cloudAnswer);
+    const origParas = (rawCloudDesc || '').split(/\n\s*\n/).map((p: string) => p.trim()).filter(Boolean);
+    origParas.forEach((p: string) => {
+      if (p && !getCachedTranslation(p, activeLang)) textsToTranslate.push(p);
+    });
+
+    if (rawCloudAnswer && !getCachedTranslation(rawCloudAnswer, activeLang)) {
+      textsToTranslate.push(rawCloudAnswer);
     }
+    const origPts = (rawCloudAnswer || '').split(/(?:\s*\(\d+\)\s*|\n\s*[•\-*]\s*|\n\s*\d+\.\s*|\n{2,})/).map((p: string) => p.trim().replace(/^[•\-*]\s*/, '')).filter(Boolean);
+    origPts.forEach((pt: string) => {
+      if (pt && !getCachedTranslation(pt, activeLang)) textsToTranslate.push(pt);
+    });
+
     if (Array.isArray(cloudFeatures)) {
       cloudFeatures.forEach((f) => {
         if (f && !getCachedTranslation(f, activeLang)) textsToTranslate.push(f);
@@ -2722,7 +2764,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
         setTranslationTick((v) => v + 1);
       });
     }
-  }, [result, activeLang, cloudDescription, cloudAnswer, cloudFeatures, cloudUncertainties, presentInventoryList, absentInventoryList]);
+  }, [result, activeLang, rawCloudDesc, rawCloudAnswer, cloudFeatures, cloudUncertainties, presentInventoryList, absentInventoryList]);
 
   const riskInfo = useMemo(() => {
     const chg = result?.temporal_analysis?.changed_fraction ?? 0;
@@ -4685,7 +4727,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
                 </div>
               </div>
             ) : result?.analysis_report ? (
-              <SpecialistReport report={result.analysis_report} />
+              <SpecialistReport report={result.analysis_report} lang={activeLang} />
             ) : (
               /* Big, Clear Analysis Presentation */
               <div className="satt-big-analysis-box" style={{ marginTop: '12px' }}>
