@@ -66,7 +66,6 @@ interface CesiumGlobeViewerProps {
   geoBounds?: GeoBounds | null;
   callouts?: HudCalloutItem[];
   activeFilter?: string;
-  onFilterChange?: (filter: string) => void;
   showOverlay?: boolean;
   onToggleOverlay?: () => void;
   isProcessing?: boolean;
@@ -440,7 +439,6 @@ export const CesiumGlobeViewer: React.FC<CesiumGlobeViewerProps> = ({
   geoBounds,
   callouts = [],
   activeFilter = 'all',
-  onFilterChange,
   showOverlay = true,
   onToggleOverlay,
   isProcessing = false,
@@ -466,7 +464,6 @@ export const CesiumGlobeViewer: React.FC<CesiumGlobeViewerProps> = ({
   const [isSunAnimating, setIsSunAnimating] = useState(false);
   const [locationInfo, setLocationInfo] = useState<LocationDetails | null>(null);
   const [copiedCoords, setCopiedCoords] = useState(false);
-
   // Check if query or image filename mentions any preset location
   const combinedQueryOrFile = `${targetLocationQuery || ''} ${uploadedFileName || ''} ${sceneName || ''}`.toLowerCase();
   const queryResolvedLoc = combinedQueryOrFile
@@ -1020,7 +1017,7 @@ export const CesiumGlobeViewer: React.FC<CesiumGlobeViewerProps> = ({
     try {
       viewer.entities.removeAll();
 
-      const b = currentBounds;
+      const b = geoBounds || currentBounds;
       const rect = Cesium.Rectangle.fromDegrees(b.west, b.south, b.east, b.north);
       const cLat = (b.south + b.north) / 2;
       const cLng = (b.west + b.east) / 2;
@@ -1896,58 +1893,6 @@ export const CesiumGlobeViewer: React.FC<CesiumGlobeViewerProps> = ({
             </div>
           </div>
         )}
-
-        {/* Bottom Interactive Feature Filter Bar - Clean, Compact & Text Only */}
-        <div className="satt-viewport-legend">
-          <button
-            type="button"
-            className={`satt-legend-btn ${activeFilter === 'all' ? 'satt-legend-btn-active' : ''}`}
-            onClick={() => onFilterChange && onFilterChange('all')}
-            title="All detected features"
-          >
-            <span className="legend-box legend-all" /> All
-          </button>
-          <button
-            type="button"
-            className={`satt-legend-btn ${activeFilter === 'road' ? 'satt-legend-btn-active' : ''}`}
-            onClick={() => onFilterChange && onFilterChange(activeFilter === 'road' ? 'all' : 'road')}
-            title="Roads"
-          >
-            <span className="legend-box legend-roads" /> Road
-          </button>
-          <button
-            type="button"
-            className={`satt-legend-btn ${activeFilter === 'built' ? 'satt-legend-btn-active' : ''}`}
-            onClick={() => onFilterChange && onFilterChange(activeFilter === 'built' ? 'all' : 'built')}
-            title="Buildings"
-          >
-            <span className="legend-box legend-built" /> Building
-          </button>
-          <button
-            type="button"
-            className={`satt-legend-btn ${activeFilter === 'forest' ? 'satt-legend-btn-active' : ''}`}
-            onClick={() => onFilterChange && onFilterChange(activeFilter === 'forest' ? 'all' : 'forest')}
-            title="Forest"
-          >
-            <span className="legend-box legend-veg" /> Forest
-          </button>
-          <button
-            type="button"
-            className={`satt-legend-btn ${activeFilter === 'river' ? 'satt-legend-btn-active' : ''}`}
-            onClick={() => onFilterChange && onFilterChange(activeFilter === 'river' ? 'all' : 'river')}
-            title="River"
-          >
-            <span className="legend-box legend-river" /> River
-          </button>
-          <button
-            type="button"
-            className={`satt-legend-btn ${activeFilter === 'pond' ? 'satt-legend-btn-active' : ''}`}
-            onClick={() => onFilterChange && onFilterChange(activeFilter === 'pond' ? 'all' : 'pond')}
-            title="Pond"
-          >
-            <span className="legend-box legend-pond" /> Pond
-          </button>
-        </div>
 
         {/* Scale Indicator */}
         <div className="satt-viewport-scale">

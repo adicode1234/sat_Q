@@ -85,7 +85,8 @@ class Followup(BaseModel):
     @field_validator("query")
     @classmethod
     def normalize_query(cls,value):return settings.query_text(value)
-    box:list[int]=Field(min_length=4,max_length=4)
+    box:list[int]|None=Field(default=None,min_length=4,max_length=4)
+    bounds:list[float]|None=Field(default=None,min_length=4,max_length=4)
 
 
 def public_job(job):return {k:v for k,v in job.items() if not k.startswith('_')}
@@ -333,17 +334,31 @@ async def followup(job_id:str,request:Followup):
     parent=jobs.get(job_id)
     if not parent or not parent.get('_paths') or parent['status']!='complete':
         raise HTTPException(409,'Follow-up source is no longer in this session; upload the source imagery again.')
-    from gateway.regions import crop_bundle
-    try:crop_bundle(validate(parent['_paths'],parent['_options'],parent['_scenario']),{'box':request.box})
+    from gateway.regions import crop_bundle, geographic_box
+    if (request.box is None) == (request.bounds is None):
+        raise HTTPException(422,'Provide either an image rectangle or geographic bounds.')
+    try:
+        bundle = await asyncio.to_thread(validate,parent['_paths'],parent['_options'],parent['_scenario'])
+        if request.bounds is not None:
+            box = geographic_box(bundle, request.bounds)
+        else:
+            box = request.box
+            parent_roi = parent.get('result',{}).get('input',{}).get('images',[{}])[0].get('roi')
+            if parent_roi:
+                width, height = parent_roi[2]-parent_roi[0], parent_roi[3]-parent_roi[1]
+                if not (0 <= box[0] < box[2] <= width and 0 <= box[1] < box[3] <= height):
+                    raise ValueError('ROI is outside the displayed image.')
+                box = [box[0]+parent_roi[0],box[1]+parent_roi[1],box[2]+parent_roi[0],box[3]+parent_roi[1]]
+        crop_bundle(bundle,{'box':box})
     except ValueError as exc:raise HTTPException(422,str(exc)) from exc
     return start(parent['_paths'],parent['_options'],parent['_scenario'],request.query,
-                 roi={'box':request.box},parent_id=job_id)
+                 roi={'box':box},parent_id=job_id)
 
 
 @app.get('/api/history')
 def history():
     rows=[]
-    for path in sorted(REPORTS.glob('*.json'),key=lambda p:p.stat().st_mtime,reverse=True)[:30]:
+    for path in sorted(REPORTS.glob('*.json'),key=lambda p:p.stat().st_mtime,reverse=True):
         try:
             out=json.loads(path.read_text(encoding='utf-8'))
             rows.append({k:out.get(k) for k in ('query_id','query','task','timestamp','trust_score','decision','previews','report_url')})

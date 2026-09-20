@@ -79,6 +79,7 @@ export type UploadedFileWithRaw = {
 };
 
 export type SatResult = {
+  recommendations: never[];
   analysis_report?: AnalysisReport;
   interpretation_source?: string;
   query_id: string;
@@ -1005,8 +1006,8 @@ export function generatePdfReportHtml(result: SatResult, imageSrc: string, activ
         <div class="box-title">⚠ Uncertainties / Notes</div>
         <ul class="mini-list">
           ${uncertainties.length > 0
-            ? uncertainties.map(u => `<li>${String(u).slice(0, 120)}${String(u).length > 120 ? '…' : ''}</li>`).join('')
-            : '<li>No significant uncertainties noted.</li>'}
+      ? uncertainties.map(u => `<li>${String(u).slice(0, 120)}${String(u).length > 120 ? '…' : ''}</li>`).join('')
+      : '<li>No significant uncertainties noted.</li>'}
         </ul>
       </div>
     </div>
@@ -1188,7 +1189,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     try {
       const saved = localStorage.getItem('satquery_app_lang');
       if (saved === 'hi' || saved === 'bn' || saved === 'en') return saved as AppLanguage;
-    } catch {}
+    } catch { }
     return 'en';
   });
 
@@ -1196,7 +1197,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     setActiveLang(lang);
     try {
       localStorage.setItem('satquery_app_lang', lang);
-    } catch {}
+    } catch { }
   };
 
   const [activeHelpTopic, setActiveHelpTopic] = useState<string | null>(null);
@@ -1371,7 +1372,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
         osc.start(now);
         osc.stop(now + 0.13);
       }
-    } catch (_) {}
+    } catch (_) { }
   };
 
   const stopSpeechRecognition = () => {
@@ -1381,7 +1382,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     }
     try {
       recognitionRef.current?.stop();
-    } catch (_) {}
+    } catch (_) { }
     setIsListening(false);
     setSpeechInterim('');
     recognitionRef.current = null;
@@ -1396,7 +1397,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     }
 
     if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch (_) {}
+      try { recognitionRef.current.stop(); } catch (_) { }
       recognitionRef.current = null;
     }
 
@@ -1526,7 +1527,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     setUserAvatarUrl('');
     try {
       localStorage.removeItem('satquery_user_avatar');
-    } catch {}
+    } catch { }
   };
 
   const handleLogout = async () => {
@@ -1550,6 +1551,10 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
   };
   const [historyList, setHistoryList] = useState<any[]>([]);
   const [historySearch, setHistorySearch] = useState("");
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [historyKind, setHistoryKind] = useState<'saved' | 'demo'>('saved');
+  const [openingMission, setOpeningMission] = useState<string | null>(null);
   const [bitemporalSubTab, setBitemporalSubTab] = useState<'diff' | 'inventory'>('diff');
   const [bitemporalPhotoView, setBitemporalPhotoView] = useState<'both' | 'before' | 'after' | 'mask'>('both');
   const [landUseBitemporalTab, setLandUseBitemporalTab] = useState<'after' | 'before'>('after');
@@ -1587,17 +1592,15 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
   }, []);
 
   const fetchHistory = async () => {
+    setHistoryLoading(true); setHistoryError(null);
     try {
       const res = await fetch('/api/history');
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setHistoryList(data);
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to fetch history:", e);
-    }
+      if (!res.ok) throw new Error('Could not load saved analyses. Please retry.');
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error('Invalid history response.');
+      setHistoryList(data);
+    } catch (e: any) { setHistoryError(e.message || 'History unavailable.'); }
+    finally { setHistoryLoading(false); }
   };
 
   useEffect(() => {
@@ -1639,8 +1642,8 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
       };
     });
 
-    return [...fromHistory, ...RECENT_MISSIONS];
-  }, [historyList]);
+    return historyKind === 'saved' ? fromHistory : RECENT_MISSIONS;
+  }, [historyList, historyKind]);
 
   const filteredMissions = useMemo(() => {
     if (!historySearch.trim()) return allMissions;
@@ -1977,29 +1980,26 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
   };
 
   const handleSelectRecentMission = async (m: MissionItem) => {
-    setActiveMissionId(m.id);
-    setMode(m.mode);
-    setQuery(m.query);
-    setHasStarted(true);
-    setShowHistoryModal(false);
-    setResult(null);
-    setError(null);
-    setEvents([]);
-
-    if (m.report_url) {
-      try {
-        const res = await fetch(m.report_url);
-        if (res.ok) {
-          const reportData = await res.json();
-          triggerLiveStepAnimation(reportData);
-          return;
-        }
-      } catch (e) {
-        console.warn("Could not load report_url, running query:", e);
-      }
+    if (running || openingMission) return;
+    if (!m.report_url) {
+      setFiles([null,null]); setActiveMissionId(m.id); setMode(m.mode);
+      setShowHistoryModal(false); runAnalysis(m.query,m.mode,m.demoCode); return;
     }
-
-    runAnalysis(m.query, m.mode, m.demoCode);
+    setOpeningMission(m.id); setHistoryError(null);
+    try {
+      const res = await fetch(m.report_url);
+      if (!res.ok) throw new Error('Saved result could not be opened. Refresh history and retry.');
+      const reportData = await res.json();
+      if (!reportData.query_id || !reportData.input) throw new Error('This saved report is incomplete.');
+      clearAllStepTimers();
+      if (socketRef.current) { socketRef.current.close(); socketRef.current=null; }
+      setFiles([null,null]); setResult(reportData); pendingResultRef.current=reportData;
+      setActiveMissionId(m.id); setMode(m.mode); setQuery(m.query); setHasStarted(true);
+      setShowHistoryModal(false); setError(null); setEvents(reportData.execution_trace || []);
+      setStepIndex(-1); setCompletedSteps([0,1,2,3,4,5]);
+      setAgentMessage('Saved analysis opened.'); setBitemporalPhotoView('both');
+    } catch (e: any) { setHistoryError(e.message || 'Could not open saved analysis.'); }
+    finally { setOpeningMission(null); }
   };
 
   const handleSelectTool = (tool: typeof ANALYSIS_TOOLS[0]) => {
@@ -2026,8 +2026,8 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     bitemporalPhotoView === 'before'
       ? beforeImageSrc
       : bitemporalPhotoView === 'after' || bitemporalPhotoView === 'mask'
-      ? afterImageSrc
-      : currentImageSrc;
+        ? afterImageSrc
+        : currentImageSrc;
 
   const objectOverlayFor = (imageIndex: number): BoxOverlay | null => {
     if (running) return null;
@@ -2489,10 +2489,10 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     const raw: string[] = Array.isArray((result as any)?.visible_features) && (result as any).visible_features.length > 0
       ? (result as any).visible_features
       : Array.isArray(cloudInfo?.visible_features) && cloudInfo.visible_features.length > 0
-      ? cloudInfo.visible_features
-      : result?.scene_inventory?.present && result.scene_inventory.present.length > 0
-      ? result.scene_inventory.present.map((p: any) => typeof p === 'string' ? p : p.name)
-      : [];
+        ? cloudInfo.visible_features
+        : result?.scene_inventory?.present && result.scene_inventory.present.length > 0
+          ? result.scene_inventory.present.map((p: any) => typeof p === 'string' ? p : p.name)
+          : [];
     if (activeLang === 'en') return raw;
     return raw.map((f: string) => getCachedTranslation(f, activeLang) || f);
   }, [result, cloudInfo, activeLang, preTrans?.visible_features, translationTick]);
@@ -2504,8 +2504,8 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     const raw: string[] = Array.isArray((result as any)?.uncertainties) && (result as any).uncertainties.length > 0
       ? (result as any).uncertainties
       : Array.isArray(cloudInfo?.uncertainties) && cloudInfo.uncertainties.length > 0
-      ? cloudInfo.uncertainties
-      : [];
+        ? cloudInfo.uncertainties
+        : [];
     if (activeLang === 'en') return raw;
     return raw.map((u: string) => getCachedTranslation(u, activeLang) || u);
   }, [result, cloudInfo, activeLang, preTrans?.uncertainties, translationTick]);
@@ -2663,10 +2663,10 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
     let pts = cleanedText.split('\n').filter(l => l.trim().length > 0);
     if (pts.length === 1) {
       if (pts[0].includes('Verification:')) {
-         pts = pts[0].split('Verification:');
-         pts[1] = 'Verification: ' + pts[1];
+        pts = pts[0].split('Verification:');
+        pts[1] = 'Verification: ' + pts[1];
       } else {
-         pts = pts[0].split('. ').filter(l => l.trim().length > 0).map(l => l.endsWith('.') ? l : l + '.');
+        pts = pts[0].split('. ').filter(l => l.trim().length > 0).map(l => l.endsWith('.') ? l : l + '.');
       }
     }
 
@@ -2824,7 +2824,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
 
     // Fallback: If composition object is empty (e.g. from cloud vision / openrouter), derive from scene analysis text or detected features
     const allText = `${cloudDescription || ''} ${cloudAnswer || ''} ${result?.answer || ''} ${query || ''}`.toLowerCase();
-    
+
     // Check what features exist in the scene description or detected inventory
     const hasWater = allText.includes('water') || allText.includes('river') || allText.includes('lake') || allText.includes('reservoir') || allText.includes('stream') || allText.includes('ocean');
     const hasAgri = allText.includes('agri') || allText.includes('field') || allText.includes('crop') || allText.includes('farm');
@@ -2880,7 +2880,7 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
 
     try {
       window.open(blobUrl, "_blank");
-    } catch {}
+    } catch { }
 
     // 2. Direct PDF file generation via html2pdf
     try {
@@ -3634,8 +3634,19 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
                 </div>
               )}
 
-              {/* Launch Button */}
-              <div className="satt-modal-footer">
+              {/* Dashboard access and analysis actions */}
+              <div className="satt-modal-footer satt-setup-actions">
+                <button
+                  type="button"
+                  className="satt-text-action satt-dashboard-shortcut"
+                  onClick={() => {
+                    setHasStarted(true);
+                    setActiveNav("Home");
+                    setShowUploadModal(false);
+                  }}
+                >
+                  Go to Dashboard
+                </button>
                 <button
                   type="button"
                   className="satt-modal-cancel"
@@ -3703,1631 +3714,1642 @@ export function SatVisionNexus({ onSwitchView }: { onSwitchView?: () => void }) 
             ══════════════════════════════════════════════════════ */
         <>
           <div className="satt-cockpit">
-        {/* ── COL 1: NARROW LEFT NAVIGATION RAIL ── */}
-        <aside className="satt-nav-rail">
-          <nav className="satt-nav-list">
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const isActive = (item.id === "history" && showHistorySidebar) || activeNav === item.label;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={cn("satt-nav-btn", isActive && "satt-nav-btn-active")}
-                  onClick={() => {
-                    if (item.id === "home") {
-                      setShowLanding(true);
-                      return;
-                    }
-                    if (item.id === "reports" || item.id === "history") {
-                      fetchHistory();
-                      setShowHistorySidebar((prev) => !prev);
-                      setActiveNav(item.label);
-                      return;
-                    }
-                    if (item.id === "change") {
-                      setMode("bitemporal");
-                    } else if (item.id === "fusion") {
-                      setMode("fusion");
-                    } else if (item.id === "vqa" || item.id === "landcover" || item.id === "dashboard") {
-                      setMode("single");
-                    }
-                    setActiveNav(item.label);
-                  }}
-                  title={item.label}
-                >
-                  <Icon size={20} stroke={1.9} />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Settings pinned at bottom */}
-          <button
-            type="button"
-            className={cn("satt-nav-btn", activeNav === "Settings" && "satt-nav-btn-active")}
-            onClick={() => {
-              if (activeNav === "Settings") {
-                setActiveNav("");
-              } else {
-                setActiveNav("Settings");
-                setShowHistorySidebar(false);
-              }
-            }}
-            title="Settings"
-            style={{ marginTop: 'auto' }}
-          >
-            <IconSettings size={20} stroke={1.9} />
-            <span>Settings</span>
-          </button>
-
-          {/* Interactive Rocket Launch at Bottom */}
-          <div className="satt-nav-bottom">
-            {rocketMessage && (
-              <div className="satt-rocket-banner">
-                {rocketMessage}
-              </div>
-            )}
-            <button
-              type="button"
-              className={cn("satt-rocket-btn", isLaunchingRocket && "satt-rocket-launching")}
-              onClick={handleRocketLaunch}
-              title="Launch PSLV Satellite!"
-            >
-              <RocketLaunch className="satt-rocket-anim" isLaunching={isLaunchingRocket} />
-              <span className="satt-rocket-glow" />
-            </button>
-            <div className="satt-brand-motto">
-              <strong>SATQUERY</strong>
-              <span>Intelligence for a Better Tomorrow</span>
-            </div>
-          </div>
-        </aside>
-
-        {/* ── SETTINGS SIDEBAR DRAWER ── */}
-        {activeNav === "Settings" && (
-          <>
-            <div
-              className="satt-history-sidebar-backdrop"
-              onClick={() => setActiveNav("")}
-            />
-            <aside className="satt-history-sidebar" style={{ width: '300px' }}>
-              {/* Header */}
-              <div className="satt-history-sidebar-header">
-                <div className="satt-history-sidebar-title">
-                  <IconSettings size={18} stroke={2} className="text-cyan-400" />
-                  <span>Settings</span>
-                </div>
-                <div className="satt-history-sidebar-header-actions">
-                  <button
-                    type="button"
-                    className="satt-history-sidebar-close"
-                    onClick={() => setActiveNav("")}
-                    title="Close"
-                  >
-                    <IconX size={16} stroke={2.2} />
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', flex: 1 }}>
-
-                {/* ── Profile Section ── */}
-                <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '10px', padding: '14px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', letterSpacing: '1px', marginBottom: '12px', textTransform: 'uppercase' }}>Profile</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ position: 'relative', flexShrink: 0 }}>
-                      {userAvatarUrl ? (
-                        <img src={userAvatarUrl} alt={authUser?.name} style={{ width: 48, height: 48, borderRadius: '50%', border: '2px solid #38bdf8', objectFit: 'cover' }} />
-                      ) : (
-                        <IconUserCircle size={48} stroke={1.4} className="text-cyan-400" />
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '14px', color: '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{authUser?.name || 'User'}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{authUser?.email || ''}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+            {/* ── COL 1: NARROW LEFT NAVIGATION RAIL ── */}
+            <aside className="satt-nav-rail">
+              <nav className="satt-nav-list">
+                {NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = (item.id === "history" && showHistorySidebar) || activeNav === item.label;
+                  return (
                     <button
+                      key={item.id}
                       type="button"
-                      onClick={() => avatarInputRef.current?.click()}
-                      style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.1)', color: '#38bdf8', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
+                      className={cn("satt-nav-btn", isActive && "satt-nav-btn-active")}
+                      onClick={() => {
+                        if (item.id === "home") {
+                          setShowLanding(true);
+                          return;
+                        }
+                        if (item.id === "reports" || item.id === "history") {
+                          fetchHistory();
+                          setShowHistorySidebar((prev) => !prev);
+                          setActiveNav(item.label);
+                          return;
+                        }
+                        if (item.id === "change") {
+                          setMode("bitemporal");
+                        } else if (item.id === "fusion") {
+                          setMode("fusion");
+                        } else if (item.id === "vqa" || item.id === "landcover" || item.id === "dashboard") {
+                          setMode("single");
+                        }
+                        setActiveNav(item.label);
+                      }}
+                      title={item.label}
                     >
-                      <IconCamera size={13} /> Change Photo
+                      <Icon size={20} stroke={1.9} />
+                      <span>{item.label}</span>
                     </button>
-                    {userAvatarUrl && (
+                  );
+                })}
+              </nav>
+
+              {/* Settings pinned at bottom */}
+              <button
+                type="button"
+                className={cn("satt-nav-btn", activeNav === "Settings" && "satt-nav-btn-active")}
+                onClick={() => {
+                  if (activeNav === "Settings") {
+                    setActiveNav("");
+                  } else {
+                    setActiveNav("Settings");
+                    setShowHistorySidebar(false);
+                  }
+                }}
+                title="Settings"
+                style={{ marginTop: 'auto' }}
+              >
+                <IconSettings size={20} stroke={1.9} />
+                <span>Settings</span>
+              </button>
+
+              {/* Interactive Rocket Launch at Bottom */}
+              <div className="satt-nav-bottom">
+                {rocketMessage && (
+                  <div className="satt-rocket-banner">
+                    {rocketMessage}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className={cn("satt-rocket-btn", isLaunchingRocket && "satt-rocket-launching")}
+                  onClick={handleRocketLaunch}
+                  title="Launch PSLV Satellite!"
+                >
+                  <RocketLaunch className="satt-rocket-anim" isLaunching={isLaunchingRocket} />
+                  <span className="satt-rocket-glow" />
+                </button>
+                <div className="satt-brand-motto">
+                  <strong>SATQUERY</strong>
+                  <span>Intelligence for a Better Tomorrow</span>
+                </div>
+              </div>
+            </aside>
+
+            {/* ── SETTINGS SIDEBAR DRAWER ── */}
+            {activeNav === "Settings" && (
+              <>
+                <div
+                  className="satt-history-sidebar-backdrop"
+                  onClick={() => setActiveNav("")}
+                />
+                <aside className="satt-history-sidebar" style={{ width: '300px' }}>
+                  {/* Header */}
+                  <div className="satt-history-sidebar-header">
+                    <div className="satt-history-sidebar-title">
+                      <IconSettings size={18} stroke={2} className="text-cyan-400" />
+                      <span>Settings</span>
+                    </div>
+                    <div className="satt-history-sidebar-header-actions">
                       <button
                         type="button"
-                        onClick={() => setUserAvatarUrl('')}
-                        style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: '#f87171', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        className="satt-history-sidebar-close"
+                        onClick={() => setActiveNav("")}
+                        title="Close"
                       >
-                        <IconTrash size={13} /> Remove
+                        <IconX size={16} stroke={2.2} />
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
 
-                {/* ── Theme Section ── */}
-                <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '10px', padding: '14px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', letterSpacing: '1px', marginBottom: '12px', textTransform: 'uppercase' }}>Interface Theme</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setIsLightMode(false)}
-                      style={{
-                        padding: '10px 8px',
-                        borderRadius: '8px',
-                        border: `1.5px solid ${!isLightMode ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
-                        background: !isLightMode ? 'rgba(56,189,248,0.18)' : 'rgba(255,255,255,0.04)',
-                        color: !isLightMode ? '#38bdf8' : '#64748b',
-                        fontWeight: !isLightMode ? 700 : 500,
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      <IconMoon size={20} />
-                      <span>Dark Mode</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsLightMode(true)}
-                      style={{
-                        padding: '10px 8px',
-                        borderRadius: '8px',
-                        border: `1.5px solid ${isLightMode ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
-                        background: isLightMode ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.04)',
-                        color: isLightMode ? '#f59e0b' : '#64748b',
-                        fontWeight: isLightMode ? 700 : 500,
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      <IconSun size={20} />
-                      <span>Light Mode</span>
-                    </button>
-                  </div>
-                </div>
+                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', flex: 1 }}>
 
-                {/* ── Language Section ── */}
-                <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '10px', padding: '14px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', letterSpacing: '1px', marginBottom: '12px', textTransform: 'uppercase' }}>Language / भाषा</div>
-                  <div className="satt-lang-selector-group" style={{ display: 'flex', width: '100%', justifyContent: 'space-between', padding: '4px', borderRadius: '12px' }}>
-                    <button
-                      type="button"
-                      className={cn("satt-lang-btn", activeLang === 'en' && "satt-lang-btn-active")}
-                      onClick={() => handleSetLang('en')}
-                      title="English"
-                      style={{ flex: 1, justifyContent: 'center', padding: '6px 8px' }}
-                    >
-                      EN
-                    </button>
-                    <button
-                      type="button"
-                      className={cn("satt-lang-btn", activeLang === 'hi' && "satt-lang-btn-active")}
-                      onClick={() => handleSetLang('hi')}
-                      title="हिन्दी"
-                      style={{ flex: 1.2, justifyContent: 'center', padding: '6px 8px' }}
-                    >
-                      हिन्दी
-                    </button>
-                    <button
-                      type="button"
-                      className={cn("satt-lang-btn", activeLang === 'bn' && "satt-lang-btn-active")}
-                      onClick={() => handleSetLang('bn')}
-                      title="বাংলা"
-                      style={{ flex: 1.2, justifyContent: 'center', padding: '6px 8px' }}
-                    >
-                      বাংলা
-                    </button>
-                  </div>
-                </div>
-
-                {/* ── Plans Section ── */}
-                <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '10px', padding: '14px' }}>
-                  <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', letterSpacing: '1px', marginBottom: '12px', textTransform: 'uppercase' }}>Plan</div>
-                  {[
-                    { name: 'Free', price: '$0/mo', features: ['5 analyses/day', 'Single image mode', 'Standard models'], color: '#64748b', highlight: false },
-                    { name: 'Pro', price: '$19/mo', features: ['Unlimited analyses', 'Bi-temporal & Fusion', 'Priority models', 'Export reports'], color: '#38bdf8', highlight: true },
-                    { name: 'Enterprise', price: 'Custom', features: ['Team workspace', 'Custom integrations', 'Dedicated support'], color: '#a78bfa', highlight: false },
-                  ].map((plan) => (
-                    <div
-                      key={plan.name}
-                      style={{
-                        marginBottom: '8px',
-                        padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: `1.5px solid ${plan.highlight ? plan.color : 'rgba(255,255,255,0.08)'}`,
-                        background: plan.highlight ? `rgba(56,189,248,0.08)` : 'rgba(255,255,255,0.02)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <span style={{ fontWeight: 700, fontSize: '13px', color: plan.color }}>{plan.name}</span>
-                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8' }}>{plan.price}</span>
-                      </div>
-                      {plan.features.map((f, i) => (
-                        <div key={i} style={{ fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
-                          <IconCheck size={11} style={{ color: plan.color, flexShrink: 0 }} /> {f}
+                    {/* ── Profile Section ── */}
+                    <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '10px', padding: '14px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', letterSpacing: '1px', marginBottom: '12px', textTransform: 'uppercase' }}>Profile</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ position: 'relative', flexShrink: 0 }}>
+                          {userAvatarUrl ? (
+                            <img src={userAvatarUrl} alt={authUser?.name} style={{ width: 48, height: 48, borderRadius: '50%', border: '2px solid #38bdf8', objectFit: 'cover' }} />
+                          ) : (
+                            <IconUserCircle size={48} stroke={1.4} className="text-cyan-400" />
+                          )}
                         </div>
-                      ))}
-                      {plan.highlight && (
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: '14px', color: '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{authUser?.name || 'User'}</div>
+                          <div style={{ fontSize: '11px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{authUser?.email || ''}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                         <button
                           type="button"
-                          style={{ marginTop: '8px', width: '100%', padding: '6px', borderRadius: '6px', background: '#38bdf8', color: '#0a1628', fontWeight: 700, fontSize: '11px', border: 'none', cursor: 'pointer' }}
+                          onClick={() => avatarInputRef.current?.click()}
+                          style={{ flex: 1, padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.1)', color: '#38bdf8', fontSize: '11px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
                         >
-                          Upgrade to Pro
+                          <IconCamera size={13} /> Change Photo
                         </button>
-                      )}
+                        {userAvatarUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setUserAvatarUrl('')}
+                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.1)', color: '#f87171', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <IconTrash size={13} /> Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  ))}
-                </div>
 
-                {/* ── Logout Section ── */}
-                <div>
-                  {authError && <p role="alert" style={{ color: '#fca5a5', fontSize: '11px', marginBottom: '8px' }}>{authError}</p>}
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    disabled={loggingOut}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid rgba(239,68,68,0.35)',
-                      background: 'rgba(239,68,68,0.1)',
-                      color: '#f87171',
-                      fontWeight: 600,
-                      fontSize: '13px',
-                      cursor: loggingOut ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      opacity: loggingOut ? 0.6 : 1,
-                      transition: 'all 0.15s'
-                    }}
-                  >
-                    <IconLogout size={16} stroke={1.9} />
-                    <span>{loggingOut ? 'Signing out…' : 'Log Out'}</span>
-                  </button>
-                </div>
+                    {/* ── Theme Section ── */}
+                    <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '10px', padding: '14px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', letterSpacing: '1px', marginBottom: '12px', textTransform: 'uppercase' }}>Interface Theme</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setIsLightMode(false)}
+                          style={{
+                            padding: '10px 8px',
+                            borderRadius: '8px',
+                            border: `1.5px solid ${!isLightMode ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
+                            background: !isLightMode ? 'rgba(56,189,248,0.18)' : 'rgba(255,255,255,0.04)',
+                            color: !isLightMode ? '#38bdf8' : '#64748b',
+                            fontWeight: !isLightMode ? 700 : 500,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          <IconMoon size={20} />
+                          <span>Dark Mode</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsLightMode(true)}
+                          style={{
+                            padding: '10px 8px',
+                            borderRadius: '8px',
+                            border: `1.5px solid ${isLightMode ? '#f59e0b' : 'rgba(255,255,255,0.1)'}`,
+                            background: isLightMode ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.04)',
+                            color: isLightMode ? '#f59e0b' : '#64748b',
+                            fontWeight: isLightMode ? 700 : 500,
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          <IconSun size={20} />
+                          <span>Light Mode</span>
+                        </button>
+                      </div>
+                    </div>
 
-              </div>
-            </aside>
-          </>
-        )}
+                    {/* ── Language Section ── */}
+                    <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '10px', padding: '14px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', letterSpacing: '1px', marginBottom: '12px', textTransform: 'uppercase' }}>Language / भाषा</div>
+                      <div className="satt-lang-selector-group" style={{ display: 'flex', width: '100%', justifyContent: 'space-between', padding: '4px', borderRadius: '12px' }}>
+                        <button
+                          type="button"
+                          className={cn("satt-lang-btn", activeLang === 'en' && "satt-lang-btn-active")}
+                          onClick={() => handleSetLang('en')}
+                          title="English"
+                          style={{ flex: 1, justifyContent: 'center', padding: '6px 8px' }}
+                        >
+                          EN
+                        </button>
+                        <button
+                          type="button"
+                          className={cn("satt-lang-btn", activeLang === 'hi' && "satt-lang-btn-active")}
+                          onClick={() => handleSetLang('hi')}
+                          title="हिन्दी"
+                          style={{ flex: 1.2, justifyContent: 'center', padding: '6px 8px' }}
+                        >
+                          हिन्दी
+                        </button>
+                        <button
+                          type="button"
+                          className={cn("satt-lang-btn", activeLang === 'bn' && "satt-lang-btn-active")}
+                          onClick={() => handleSetLang('bn')}
+                          title="বাংলা"
+                          style={{ flex: 1.2, justifyContent: 'center', padding: '6px 8px' }}
+                        >
+                          বাংলা
+                        </button>
+                      </div>
+                    </div>
 
-        {/* ── DEDICATED RECENT MISSIONS SIDEBAR DRAWER ── */}
-        {showHistorySidebar && (
-          <>
-            <div
-              className="satt-history-sidebar-backdrop"
-              onClick={() => setShowHistorySidebar(false)}
-            />
-            <aside className="satt-history-sidebar">
-              <div className="satt-history-sidebar-header">
-                <div className="satt-history-sidebar-title">
-                  <IconHistory size={18} stroke={2} className="text-cyan-400" />
-                  <span>Recent Missions</span>
-                  <span className="satt-history-count-tag">{allMissions.length}</span>
-                </div>
-                <div className="satt-history-sidebar-header-actions">
-                  <button
-                    type="button"
-                    className="satt-history-sidebar-icon-btn"
-                    onClick={fetchHistory}
-                    title="Refresh missions from server"
-                  >
-                    <IconRefresh size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    className="satt-history-sidebar-close"
-                    onClick={() => setShowHistorySidebar(false)}
-                    title="Close Sidebar"
-                  >
-                    <IconX size={16} stroke={2.2} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Quick History Search Bar */}
-              <div className="satt-history-sidebar-search">
-                <div className="satt-search-icon-wrap">
-                  <IconSearch size={14} className="satt-search-ico" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search missions, targets, dates..."
-                  value={historySearch}
-                  onChange={(e) => setHistorySearch(e.target.value)}
-                  className="satt-history-sidebar-input"
-                  autoFocus
-                />
-                {historySearch ? (
-                  <button
-                    type="button"
-                    onClick={() => setHistorySearch("")}
-                    className="satt-history-search-clear"
-                    title="Clear filter"
-                  >
-                    <IconX size={13} />
-                  </button>
-                ) : (
-                  <span className="satt-search-badge">Filter</span>
-                )}
-              </div>
-
-              {/* Missions List in Full Sidebar */}
-              <div className="satt-history-sidebar-list">
-                {filteredMissions.map((m) => {
-                  const isSelected = activeMissionId === m.id;
-                  return (
-                    <div
-                      key={m.id}
-                      className={cn(
-                        "satt-history-sidebar-card",
-                        isSelected && "satt-history-sidebar-card-active"
-                      )}
-                      onClick={() => handleSelectRecentMission(m)}
-                      title={m.query}
-                    >
-                      <img src={m.thumb} alt={m.title} className="satt-history-sidebar-thumb" />
-                      <div className="satt-history-sidebar-info">
-                        <div className="satt-history-sidebar-top-row">
-                          <span className="satt-history-sidebar-name">{m.title}</span>
-                          <span className="satt-completed-pill">{m.status}</span>
+                    {/* ── Plans Section ── */}
+                    <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.15)', borderRadius: '10px', padding: '14px' }}>
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: '#38bdf8', letterSpacing: '1px', marginBottom: '12px', textTransform: 'uppercase' }}>Plan</div>
+                      {[
+                        { name: 'Free', price: '$0/mo', features: ['5 analyses/day', 'Single image mode', 'Standard models'], color: '#64748b', highlight: false },
+                        { name: 'Pro', price: '$19/mo', features: ['Unlimited analyses', 'Bi-temporal & Fusion', 'Priority models', 'Export reports'], color: '#38bdf8', highlight: true },
+                        { name: 'Enterprise', price: 'Custom', features: ['Team workspace', 'Custom integrations', 'Dedicated support'], color: '#a78bfa', highlight: false },
+                      ].map((plan) => (
+                        <div
+                          key={plan.name}
+                          style={{
+                            marginBottom: '8px',
+                            padding: '10px 12px',
+                            borderRadius: '8px',
+                            border: `1.5px solid ${plan.highlight ? plan.color : 'rgba(255,255,255,0.08)'}`,
+                            background: plan.highlight ? `rgba(56,189,248,0.08)` : 'rgba(255,255,255,0.02)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <span style={{ fontWeight: 700, fontSize: '13px', color: plan.color }}>{plan.name}</span>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8' }}>{plan.price}</span>
+                          </div>
+                          {plan.features.map((f, i) => (
+                            <div key={i} style={{ fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
+                              <IconCheck size={11} style={{ color: plan.color, flexShrink: 0 }} /> {f}
+                            </div>
+                          ))}
+                          {plan.highlight && (
+                            <button
+                              type="button"
+                              style={{ marginTop: '8px', width: '100%', padding: '6px', borderRadius: '6px', background: '#38bdf8', color: '#0a1628', fontWeight: 700, fontSize: '11px', border: 'none', cursor: 'pointer' }}
+                            >
+                              Upgrade to Pro
+                            </button>
+                          )}
                         </div>
-                        <div className="satt-history-sidebar-query">"{m.query}"</div>
-                        <div className="satt-history-sidebar-meta">
-                          <span>📅 {m.date}</span>
-                          <span>🛰️ {m.sensor}</span>
-                          {m.trust_score != null && (
-                            <span className="satt-history-trust-pill">
-                              {Math.round(m.trust_score * 100)}% Trust
-                            </span>
+                      ))}
+                    </div>
+
+                    {/* ── Logout Section ── */}
+                    <div>
+                      {authError && <p role="alert" style={{ color: '#fca5a5', fontSize: '11px', marginBottom: '8px' }}>{authError}</p>}
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        disabled={loggingOut}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(239,68,68,0.35)',
+                          background: 'rgba(239,68,68,0.1)',
+                          color: '#f87171',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          cursor: loggingOut ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          opacity: loggingOut ? 0.6 : 1,
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <IconLogout size={16} stroke={1.9} />
+                        <span>{loggingOut ? 'Signing out…' : 'Log Out'}</span>
+                      </button>
+                    </div>
+
+                  </div>
+                </aside>
+              </>
+            )}
+
+            {/* ── DEDICATED RECENT MISSIONS SIDEBAR DRAWER ── */}
+            {showHistorySidebar && (
+              <>
+                <div
+                  className="satt-history-sidebar-backdrop"
+                  onClick={() => setShowHistorySidebar(false)}
+                />
+                <aside className="satt-history-sidebar">
+                  <div className="satt-history-sidebar-header">
+                    <div className="satt-history-sidebar-title">
+                      <IconHistory size={18} stroke={2} className="text-cyan-400" />
+                      <span>Recent Missions</span>
+                      <span className="satt-history-count-tag">{allMissions.length}</span>
+                    </div>
+                    <div className="satt-history-sidebar-header-actions">
+                      <button
+                        type="button"
+                        className="satt-history-sidebar-icon-btn"
+                        onClick={fetchHistory}
+                        title="Refresh missions from server"
+                      >
+                        <IconRefresh size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="satt-history-sidebar-close"
+                        onClick={() => setShowHistorySidebar(false)}
+                        title="Close Sidebar"
+                      >
+                        <IconX size={16} stroke={2.2} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{display:'flex',gap:8,padding:'12px 16px'}}>
+                    <button type="button" className="satt-text-action" aria-pressed={historyKind === 'saved'} onClick={() => setHistoryKind('saved')}>Saved ({historyList.length})</button>
+                    <button type="button" className="satt-text-action" aria-pressed={historyKind === 'demo'} onClick={() => setHistoryKind('demo')}>Demo missions</button>
+                  </div>
+                  {historyLoading && <p role="status" style={{padding:'0 16px'}}>Loading analyses…</p>}
+                  {openingMission && <p role="status" style={{padding:'0 16px'}}>Opening saved result…</p>}
+                  {historyError && <p role="alert" style={{padding:'0 16px',color:'#fca5a5'}}>{historyError} <button type="button" onClick={fetchHistory}>Retry</button></p>}
+                  {/* Quick History Search Bar */}
+                  <div className="satt-history-sidebar-search">
+                    <div className="satt-search-icon-wrap">
+                      <IconSearch size={14} className="satt-search-ico" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search missions, targets, dates..."
+                      value={historySearch}
+                      onChange={(e) => setHistorySearch(e.target.value)}
+                      className="satt-history-sidebar-input"
+                      autoFocus
+                    />
+                    {historySearch ? (
+                      <button
+                        type="button"
+                        onClick={() => setHistorySearch("")}
+                        className="satt-history-search-clear"
+                        title="Clear filter"
+                      >
+                        <IconX size={13} />
+                      </button>
+                    ) : (
+                      <span className="satt-search-badge">Filter</span>
+                    )}
+                  </div>
+
+                  {/* Missions List in Full Sidebar */}
+                  <div className="satt-history-sidebar-list">
+                    {filteredMissions.map((m) => {
+                      const isSelected = activeMissionId === m.id;
+                      return (
+                        <div
+                          key={m.id}
+                          className={cn(
+                            "satt-history-sidebar-card",
+                            isSelected && "satt-history-sidebar-card-active"
+                          )}
+                          role="button"
+                          tabIndex={0}
+                          aria-disabled={running || !!openingMission}
+                          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') {e.preventDefault(); void handleSelectRecentMission(m);} }}
+                          onClick={() => handleSelectRecentMission(m)}
+                          title={m.query}
+                        >
+                          <img src={m.thumb} alt={m.title} className="satt-history-sidebar-thumb" />
+                          <div className="satt-history-sidebar-info">
+                            <div className="satt-history-sidebar-top-row">
+                              <span className="satt-history-sidebar-name">{m.title}</span>
+                              <span className="satt-completed-pill">{m.status}</span>
+                            </div>
+                            <div className="satt-history-sidebar-query">"{m.query}"</div>
+                            <div className="satt-history-sidebar-meta">
+                              <span>📅 {m.date}</span>
+                              <span>🛰️ {m.sensor}</span>
+                              {m.trust_score != null && (
+                                <span className="satt-history-trust-pill">
+                                  {Math.round(m.trust_score * 100)}% Trust
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {filteredMissions.length === 0 && (
+                      <div className="satt-history-empty-inline">
+                        <span>{historySearch ? `No missions matching "${historySearch}".` : "No saved analyses yet. Completed analyses appear here automatically."}</span>
+                        <button
+                          type="button"
+                          onClick={() => setHistorySearch("")}
+                          className="satt-history-reset-btn"
+                        >
+                          Clear Filter
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sidebar Footer Quick Action */}
+                  <div className="satt-history-sidebar-footer">
+                    <button
+                      type="button"
+                      className="satt-history-sidebar-new-btn"
+                      onClick={() => {
+                        setHasStarted(false);
+                        setShowHistorySidebar(false);
+                      }}
+                      title="Create new satellite analysis"
+                    >
+                      <IconPlus size={15} stroke={2.4} />
+                      <span>New Mission Analysis</span>
+                    </button>
+                  </div>
+                </aside>
+              </>
+            )}
+
+            {/* ── COL 2: MISSION CONTROL & ANALYSIS TOOLS ── */}
+            <aside className="satt-tools-column">
+              {/* Card A: Mission Control */}
+              <section className="satt-card satt-mission-control-card">
+                <div className="satt-card-header">
+                  <div className="satt-card-title">
+                    <IconTargetArrow size={17} stroke={2} className="satt-title-icon" />
+                    <span>Mission Control</span>
+                  </div>
+                </div>
+
+                {/* Quick Action Buttons */}
+                <div className="satt-mc-actions">
+                  <button
+                    type="button"
+                    className="satt-btn-new-analysis"
+                    onClick={() => setHasStarted(false)}
+                    title="Return to Observation Setup"
+                  >
+                    <IconPlus size={16} stroke={2.5} />
+                    <span>New Analysis</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="satt-btn-upload"
+                    onClick={() => setHasStarted(false)}
+                    title="Upload Image Data"
+                  >
+                    <IconCloudUpload size={16} stroke={1.8} />
+                    <span>Upload Data</span>
+                  </button>
+                </div>
+
+                {/* Link to Open Dedicated Sidebar */}
+                <div className="satt-sidebar-trigger-card">
+                  <button
+                    type="button"
+                    className="satt-open-history-sidebar-btn"
+                    onClick={() => {
+                      fetchHistory();
+                      setShowHistorySidebar(true);
+                    }}
+                    title="Open Recent Missions & History Sidebar"
+                  >
+                    <div className="satt-btn-side-left">
+                      <IconHistory size={15} stroke={2} className="text-cyan-400" />
+                      <span>Analysis history ({historyList.length})</span>
+                    </div>
+                    <span className="satt-btn-side-arrow">&rarr;</span>
+                  </button>
+                </div>
+              </section>
+
+              {/* Card B: Analysis Tools */}
+              <section className="satt-card satt-tools-card">
+                <div className="satt-card-header">
+                  <div className="satt-card-title">
+                    <IconAdjustments size={17} stroke={2} className="satt-title-icon" />
+                    <span>Analysis Tools</span>
+                  </div>
+                </div>
+
+                <div className="satt-tools-list">
+                  {ANALYSIS_TOOLS.map((tool) => {
+                    const ToolIcon = tool.icon;
+                    return (
+                      <div
+                        key={tool.id}
+                        className="satt-tool-row"
+                        onClick={() => handleSelectTool(tool)}
+                      >
+                        <div className="satt-tool-icon-box" style={{ color: tool.color, background: `${tool.color}15`, borderColor: `${tool.color}35` }}>
+                          <ToolIcon size={17} stroke={2} />
+                        </div>
+                        <div className="satt-tool-copy">
+                          <div className="satt-tool-title">{tool.title}</div>
+                          <div className="satt-tool-desc">{tool.desc}</div>
+                        </div>
+                        <IconArrowRight size={14} stroke={2} className="satt-tool-arrow" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+
+
+            </aside>
+
+            {/* ── COL 3: CENTER STAGE (Viewer + AI Analysis & Recommendations) ── */}
+            <main className="satt-center-column">
+              {/* Card 1: Satellite Image Viewer */}
+              <section className="satt-card satt-viewer-card">
+                <div className="satt-viewer-header">
+                  <div className="satt-card-title">
+                    <IconSatellite size={18} stroke={2} className="satt-title-icon" />
+                    <span>{t('viewerTitle', activeLang)}</span>
+                    <span className="satt-modality-badge">
+                      {mode === 'bitemporal' ? 'Bi-Temporal (T1/T2)' : mode === 'fusion' ? 'Optical + SAR' : 'Optical (RGB)'}
+                    </span>
+                    <div className="satt-view-mode-tabs">
+                      <button
+                        type="button"
+                        className={cn("satt-view-tab-btn", viewerMode === '2d' && "satt-view-tab-active")}
+                        onClick={() => setViewerMode('2d')}
+                        title="2D Pixel Surface Analysis View"
+                      >
+                        <IconLayersIntersect size={13} />
+                        <span>{t('view2D', activeLang)}</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={cn("satt-view-tab-btn", viewerMode === '3d' && "satt-view-tab-active")}
+                        onClick={() => setViewerMode('3d')}
+                        title="3D Globe Viewer (Cesium.js)"
+                      >
+                        <IconGlobe size={13} />
+                        <span>{t('view3D', activeLang)}</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="satt-viewer-status">
+                    <span className="satt-status-pill-green">
+                      <span className="satt-neon-dot" />
+                      {running ? "Processing Scene..." : t('analysisReady', activeLang)}
+                    </span>
+                  </div>
+                </div>
+
+
+
+                {result && !running && viewerMode === '2d' && (
+                  <div className="satt-annotation-status" role="status">
+                    {!showOverlay ? 'Object boxes hidden — use the eye button to show them.'
+                      : objectOverlayFor(0) || objectOverlayFor(1)
+                        ? 'Red boxes label candidate objects. AI locations are approximate.'
+                        : 'No object locations supplied for this result. Run a new analysis to request labeled boxes.'}
+                  </div>
+                )}
+
+                {/* Viewport Canvas & Overlays */}
+                <div ref={viewportRef} className={cn("satt-viewport-area", viewerMode === "3d" && "satt-viewer-area-3d")}>
+
+                  {/* Floating Toolbar Controls (only shown in 2D mode to avoid overlapping 3D Cesium toolbar) */}
+                  {viewerMode === '2d' && (
+                    <div className="satt-vp-toolbar">
+                      <button
+                        type="button"
+                        className="satt-vp-btn text-cyan-400"
+                        title="Switch to 3D Globe Viewer (Cesium.js)"
+                        onClick={() => setViewerMode('3d')}
+                      >
+                        <IconGlobe size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className={cn("satt-vp-btn", showOverlay && "satt-vp-btn-active")}
+                        title="Toggle Layers"
+                        onClick={() => setShowOverlay((v) => !v)}
+                      >
+                        {showOverlay ? <IconEye size={16} /> : <IconEyeOff size={16} />}
+                      </button>
+                      <button
+                        type="button"
+                        className={cn("satt-vp-btn", showPointers && "satt-vp-btn-active text-cyan-400")}
+                        title="Toggle Feature Arrows (Pond, Buildings, Forest, Road)"
+                        onClick={() => setShowPointers((v) => !v)}
+                      >
+                        <IconMapPin size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className={cn("satt-vp-btn", showLandUseHud && "satt-vp-btn-active text-emerald-400")}
+                        title="Toggle Land Use Distribution HUD"
+                        onClick={() => setShowLandUseHud((v) => !v)}
+                      >
+                        <IconChartDonut size={16} />
+                      </button>
+                      <div className="satt-vp-divider" />
+                      <button type="button" className="satt-vp-btn" title="Zoom In" onClick={() => setZoomLevel((z) => Math.min(3, +(z + 0.25).toFixed(2)))}>
+                        <IconPlus size={16} />
+                      </button>
+                      <button type="button" className="satt-vp-btn" title="Zoom Out" onClick={() => setZoomLevel((z) => Math.max(1, +(z - 0.25).toFixed(2)))}>
+                        <IconMinus size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className={cn("satt-vp-btn", isFullscreen && "satt-vp-btn-active text-cyan-400")}
+                        title={isFullscreen ? "Exit Fullscreen" : "Fullscreen View"}
+                        onClick={toggleFullscreen}
+                      >
+                        {isFullscreen ? <IconMinimize size={16} /> : <IconMaximize size={16} />}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Scanning / Loading Map Overlay */}
+                  {running && (
+                    <div className="satt-map-scanning-overlay">
+                      <div className="satt-map-scanner-line"></div>
+                      <div className="satt-map-scanning-text">
+                        <span className="satt-running-pulse-dot" style={{ display: 'inline-block', marginRight: 10, width: 10, height: 10 }}></span>
+                        SCANNING ORBITAL FOOTPRINT...
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3D Globe Viewer (Cesium.js) vs 2D Pixel Canvas */}
+                  {viewerMode === '3d' ? (
+                    <CesiumGlobeViewer
+                      key={result?.query_id || "workspace"}
+                      imageSrc={
+                        bitemporalPhotoView === 'before'
+                          ? beforeImageSrc
+                          : bitemporalPhotoView === 'after' || bitemporalPhotoView === 'mask'
+                            ? afterImageSrc
+                            : currentImageSrc
+                      }
+                      geoBounds={result?.input?.metadata?.geo_bounds || (result?.input?.images?.[0] as any)?.geo_bounds || null}
+                      callouts={dynamicCallouts}
+                      activeFilter={activeFeatureFilter}
+                      showOverlay={showOverlay}
+                      onToggleOverlay={() => setShowOverlay((v) => !v)}
+                      isProcessing={running}
+                      sceneName={result?.task || query || "Satellite Observation Footprint"}
+                      modalityBadge={mode === 'bitemporal' ? 'Bi-Temporal (T1/T2)' : mode === 'fusion' ? 'Optical + SAR' : 'Optical (RGB)'}
+                      onSwitchTo2D={() => setViewerMode('2d')}
+                      targetLocationQuery={query}
+                      uploadedFileName={files[0]?.name || files[1]?.name || undefined}
+                      onAnalyzeLocation={(locName) => {
+                        const cleanName = locName.split('(')[0].trim();
+                        const q = `Analyze ${cleanName}`;
+                        setQuery(q);
+                        setViewerMode('2d');
+                        runAnalysis(q);
+                      }}
+                    />
+                  ) : (isBitemporal || isFusion) && bitemporalPhotoView === 'both' ? (
+                    <div className="satt-dual-canvas-container" style={{ transform: `scale(${zoomLevel})` }}>
+                      {/* Left Panel: Sensor 1 / T1 Before */}
+                      <div className="satt-dual-panel">
+                        <div className="satt-dual-panel-header">
+                          <span className={cn("satt-dual-badge", isFusion ? "satt-badge-optical" : "satt-badge-before")}>
+                            {isFusion ? "Sensor 1: Optical Multispectral" : "T1: Before Photo (Pre-Event)"}
+                          </span>
+                          <span className="satt-dual-res">{isFusion ? "Sentinel-2 MSI · Visible RGB" : "Spatial 10m · Optical RGB"}</span>
+                        </div>
+                        <div className="satt-dual-image-wrap">
+                          <AnnotatedScene
+                            src={beforeImageSrc}
+                            alt={isFusion ? "Optical Observation Scene" : "Before Acquisition Scene"}
+                            overlay={objectOverlayFor(0)}
+                            showBoxes={showOverlay}
+                          />
+                          {showOverlay && (
+                            <canvas
+                              ref={canvasRefBefore}
+                              className="satt-mask-canvas"
+                            />
                           )}
                         </div>
                       </div>
+
+                      {/* Right Panel: Sensor 2 / T2 After */}
+                      <div className="satt-dual-panel">
+                        <div className="satt-dual-panel-header">
+                          <span className={cn("satt-dual-badge", isFusion ? "satt-badge-sar" : "satt-badge-after")}>
+                            {isFusion ? "Sensor 2: SAR Microwave Radar" : "T2: After Photo (Post-Event)"}
+                          </span>
+                          <span className="satt-dual-res">{isFusion ? "Sentinel-1 / RISAT · Radar Backscatter" : "Spatial 10m · Optical RGB"}</span>
+                        </div>
+                        <div className="satt-dual-image-wrap">
+                          <AnnotatedScene
+                            src={afterImageSrc}
+                            alt={isFusion ? "SAR Radar Scene" : "After Acquisition Scene"}
+                            overlay={objectOverlayFor(1)}
+                            showBoxes={showOverlay}
+                          />
+                          {showOverlay && (
+                            <canvas
+                              ref={canvasRefAfter}
+                              className="satt-mask-canvas"
+                            />
+                          )}
+                          {renderHudCallouts()}
+                        </div>
+                      </div>
                     </div>
-                  );
-                })}
-                {filteredMissions.length === 0 && (
-                  <div className="satt-history-empty-inline">
-                    <span>No missions matching "{historySearch}".</span>
-                    <button
-                      type="button"
-                      onClick={() => setHistorySearch("")}
-                      className="satt-history-reset-btn"
-                    >
-                      Clear Filter
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Sidebar Footer Quick Action */}
-              <div className="satt-history-sidebar-footer">
-                <button
-                  type="button"
-                  className="satt-history-sidebar-new-btn"
-                  onClick={() => {
-                    setHasStarted(false);
-                    setShowHistorySidebar(false);
-                  }}
-                  title="Create new satellite analysis"
-                >
-                  <IconPlus size={15} stroke={2.4} />
-                  <span>New Mission Analysis</span>
-                </button>
-              </div>
-            </aside>
-          </>
-        )}
-
-        {/* ── COL 2: MISSION CONTROL & ANALYSIS TOOLS ── */}
-        <aside className="satt-tools-column">
-          {/* Card A: Mission Control */}
-          <section className="satt-card satt-mission-control-card">
-            <div className="satt-card-header">
-              <div className="satt-card-title">
-                <IconTargetArrow size={17} stroke={2} className="satt-title-icon" />
-                <span>Mission Control</span>
-              </div>
-            </div>
-
-            {/* Quick Action Buttons */}
-            <div className="satt-mc-actions">
-              <button
-                type="button"
-                className="satt-btn-new-analysis"
-                onClick={() => setHasStarted(false)}
-                title="Return to Observation Setup"
-              >
-                <IconPlus size={16} stroke={2.5} />
-                <span>New Analysis</span>
-              </button>
-              <button
-                type="button"
-                className="satt-btn-upload"
-                onClick={() => setHasStarted(false)}
-                title="Upload Image Data"
-              >
-                <IconCloudUpload size={16} stroke={1.8} />
-                <span>Upload Data</span>
-              </button>
-            </div>
-
-            {/* Link to Open Dedicated Sidebar */}
-            <div className="satt-sidebar-trigger-card">
-              <button
-                type="button"
-                className="satt-open-history-sidebar-btn"
-                onClick={() => {
-                  fetchHistory();
-                  setShowHistorySidebar(true);
-                }}
-                title="Open Recent Missions & History Sidebar"
-              >
-                <div className="satt-btn-side-left">
-                  <IconHistory size={15} stroke={2} className="text-cyan-400" />
-                  <span>Recent Missions ({allMissions.length})</span>
-                </div>
-                <span className="satt-btn-side-arrow">&rarr;</span>
-              </button>
-            </div>
-          </section>
-
-          {/* Card B: Analysis Tools */}
-          <section className="satt-card satt-tools-card">
-            <div className="satt-card-header">
-              <div className="satt-card-title">
-                <IconAdjustments size={17} stroke={2} className="satt-title-icon" />
-                <span>Analysis Tools</span>
-              </div>
-            </div>
-
-            <div className="satt-tools-list">
-              {ANALYSIS_TOOLS.map((tool) => {
-                const ToolIcon = tool.icon;
-                return (
-                  <div
-                    key={tool.id}
-                    className="satt-tool-row"
-                    onClick={() => handleSelectTool(tool)}
-                  >
-                    <div className="satt-tool-icon-box" style={{ color: tool.color, background: `${tool.color}15`, borderColor: `${tool.color}35` }}>
-                      <ToolIcon size={17} stroke={2} />
-                    </div>
-                    <div className="satt-tool-copy">
-                      <div className="satt-tool-title">{tool.title}</div>
-                      <div className="satt-tool-desc">{tool.desc}</div>
-                    </div>
-                    <IconArrowRight size={14} stroke={2} className="satt-tool-arrow" />
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-
-
-
-        </aside>
-
-        {/* ── COL 3: CENTER STAGE (Viewer + AI Analysis & Recommendations) ── */}
-        <main className="satt-center-column">
-          {/* Card 1: Satellite Image Viewer */}
-          <section className="satt-card satt-viewer-card">
-            <div className="satt-viewer-header">
-              <div className="satt-card-title">
-                <IconSatellite size={18} stroke={2} className="satt-title-icon" />
-                <span>{t('viewerTitle', activeLang)}</span>
-                <span className="satt-modality-badge">
-                  {mode === 'bitemporal' ? 'Bi-Temporal (T1/T2)' : mode === 'fusion' ? 'Optical + SAR' : 'Optical (RGB)'}
-                </span>
-                <div className="satt-view-mode-tabs">
-                  <button
-                    type="button"
-                    className={cn("satt-view-tab-btn", viewerMode === '2d' && "satt-view-tab-active")}
-                    onClick={() => setViewerMode('2d')}
-                    title="2D Pixel Surface Analysis View"
-                  >
-                    <IconLayersIntersect size={13} />
-                    <span>{t('view2D', activeLang)}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={cn("satt-view-tab-btn", viewerMode === '3d' && "satt-view-tab-active")}
-                    onClick={() => setViewerMode('3d')}
-                    title="3D Globe Viewer (Cesium.js)"
-                  >
-                    <IconGlobe size={13} />
-                    <span>{t('view3D', activeLang)}</span>
-                  </button>
-                </div>
-              </div>
-              <div className="satt-viewer-status">
-                <span className="satt-status-pill-green">
-                  <span className="satt-neon-dot" />
-                  {running ? "Processing Scene..." : t('analysisReady', activeLang)}
-                </span>
-              </div>
-            </div>
-
-
-
-            {result && !running && viewerMode === '2d' && (
-              <div className="satt-annotation-status" role="status">
-                {!showOverlay ? 'Object boxes hidden — use the eye button to show them.'
-                  : objectOverlayFor(0) || objectOverlayFor(1)
-                    ? 'Red boxes label candidate objects. AI locations are approximate.'
-                    : 'No object locations supplied for this result. Run a new analysis to request labeled boxes.'}
-              </div>
-            )}
-
-            {/* Viewport Canvas & Overlays */}
-            <div ref={viewportRef} className={cn("satt-viewport-area", viewerMode === "3d" && "satt-viewer-area-3d")}>
-
-              {/* Floating Toolbar Controls (only shown in 2D mode to avoid overlapping 3D Cesium toolbar) */}
-              {viewerMode === '2d' && (
-                <div className="satt-vp-toolbar">
-                  <button
-                    type="button"
-                    className="satt-vp-btn text-cyan-400"
-                    title="Switch to 3D Globe Viewer (Cesium.js)"
-                    onClick={() => setViewerMode('3d')}
-                  >
-                    <IconGlobe size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className={cn("satt-vp-btn", showOverlay && "satt-vp-btn-active")}
-                    title="Toggle Layers"
-                    onClick={() => setShowOverlay((v) => !v)}
-                  >
-                    {showOverlay ? <IconEye size={16} /> : <IconEyeOff size={16} />}
-                  </button>
-                  <button
-                    type="button"
-                    className={cn("satt-vp-btn", showPointers && "satt-vp-btn-active text-cyan-400")}
-                    title="Toggle Feature Arrows (Pond, Buildings, Forest, Road)"
-                    onClick={() => setShowPointers((v) => !v)}
-                  >
-                    <IconMapPin size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className={cn("satt-vp-btn", showLandUseHud && "satt-vp-btn-active text-emerald-400")}
-                    title="Toggle Land Use Distribution HUD"
-                    onClick={() => setShowLandUseHud((v) => !v)}
-                  >
-                    <IconChartDonut size={16} />
-                  </button>
-                  <div className="satt-vp-divider" />
-                  <button type="button" className="satt-vp-btn" title="Zoom In" onClick={() => setZoomLevel((z) => Math.min(3, +(z + 0.25).toFixed(2)))}>
-                    <IconPlus size={16} />
-                  </button>
-                  <button type="button" className="satt-vp-btn" title="Zoom Out" onClick={() => setZoomLevel((z) => Math.max(1, +(z - 0.25).toFixed(2)))}>
-                    <IconMinus size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className={cn("satt-vp-btn", isFullscreen && "satt-vp-btn-active text-cyan-400")}
-                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen View"}
-                    onClick={toggleFullscreen}
-                  >
-                    {isFullscreen ? <IconMinimize size={16} /> : <IconMaximize size={16} />}
-                  </button>
-                </div>
-              )}
-              
-              {/* Scanning / Loading Map Overlay */}
-              {(running || (hasStarted && !result)) && (
-                <div className="satt-map-scanning-overlay">
-                  <div className="satt-map-scanner-line"></div>
-                  <div className="satt-map-scanning-text">
-                    <span className="satt-running-pulse-dot" style={{ display: 'inline-block', marginRight: 10, width: 10, height: 10 }}></span>
-                    SCANNING ORBITAL FOOTPRINT...
-                  </div>
-                </div>
-              )}
-
-              {/* 3D Globe Viewer (Cesium.js) vs 2D Pixel Canvas */}
-              {viewerMode === '3d' ? (
-                <CesiumGlobeViewer
-                  imageSrc={
-                    bitemporalPhotoView === 'before'
-                      ? beforeImageSrc
-                      : bitemporalPhotoView === 'after' || bitemporalPhotoView === 'mask'
-                      ? afterImageSrc
-                      : currentImageSrc
-                  }
-                  geoBounds={result?.input?.metadata?.geo_bounds || (result?.input?.images?.[0] as any)?.geo_bounds || null}
-                  callouts={dynamicCallouts}
-                  activeFilter={activeFeatureFilter}
-                  onFilterChange={(f) => setActiveFeatureFilter(f as any)}
-                  showOverlay={showOverlay}
-                  onToggleOverlay={() => setShowOverlay((v) => !v)}
-                  isProcessing={running}
-                  sceneName={result?.task || query || "Satellite Observation Footprint"}
-                  modalityBadge={mode === 'bitemporal' ? 'Bi-Temporal (T1/T2)' : mode === 'fusion' ? 'Optical + SAR' : 'Optical (RGB)'}
-                  onSwitchTo2D={() => setViewerMode('2d')}
-                  targetLocationQuery={query}
-                  uploadedFileName={files[0]?.name || files[1]?.name || undefined}
-                  onAnalyzeLocation={(locName) => {
-                    const cleanName = locName.split('(')[0].trim();
-                    const q = `Analyze ${cleanName}`;
-                    setQuery(q);
-                    setViewerMode('2d');
-                    runAnalysis(q);
-                  }}
-                />
-              ) : (isBitemporal || isFusion) && bitemporalPhotoView === 'both' ? (
-                <div className="satt-dual-canvas-container" style={{ transform: `scale(${zoomLevel})` }}>
-                  {/* Left Panel: Sensor 1 / T1 Before */}
-                  <div className="satt-dual-panel">
-                    <div className="satt-dual-panel-header">
-                      <span className={cn("satt-dual-badge", isFusion ? "satt-badge-optical" : "satt-badge-before")}>
-                        {isFusion ? "Sensor 1: Optical Multispectral" : "T1: Before Photo (Pre-Event)"}
-                      </span>
-                      <span className="satt-dual-res">{isFusion ? "Sentinel-2 MSI · Visible RGB" : "Spatial 10m · Optical RGB"}</span>
-                    </div>
-                    <div className="satt-dual-image-wrap">
+                  ) : (
+                    /* Single Central Viewport Display */
+                    <div className="satt-canvas-container" style={{ transform: `scale(${zoomLevel})` }}>
                       <AnnotatedScene
-                        src={beforeImageSrc}
-                        alt={isFusion ? "Optical Observation Scene" : "Before Acquisition Scene"}
-                        overlay={objectOverlayFor(0)}
+                        src={
+                          bitemporalPhotoView === 'before'
+                            ? beforeImageSrc
+                            : bitemporalPhotoView === 'after' || bitemporalPhotoView === 'mask'
+                              ? afterImageSrc
+                              : currentImageSrc
+                        }
+                        alt="Satellite Scene Viewport"
+                        overlay={objectOverlayFor(bitemporalPhotoView === 'after' || bitemporalPhotoView === 'mask' ? 1 : 0)}
                         showBoxes={showOverlay}
                       />
+
+                      {/* Server-provided surface mask */}
                       {showOverlay && (
                         <canvas
-                          ref={canvasRefBefore}
+                          ref={canvasRef}
                           className="satt-mask-canvas"
                         />
                       )}
-                    </div>
-                  </div>
 
-                  {/* Right Panel: Sensor 2 / T2 After */}
-                  <div className="satt-dual-panel">
-                    <div className="satt-dual-panel-header">
-                      <span className={cn("satt-dual-badge", isFusion ? "satt-badge-sar" : "satt-badge-after")}>
-                        {isFusion ? "Sensor 2: SAR Microwave Radar" : "T2: After Photo (Post-Event)"}
-                      </span>
-                      <span className="satt-dual-res">{isFusion ? "Sentinel-1 / RISAT · Radar Backscatter" : "Spatial 10m · Optical RGB"}</span>
-                    </div>
-                    <div className="satt-dual-image-wrap">
-                      <AnnotatedScene
-                        src={afterImageSrc}
-                        alt={isFusion ? "SAR Radar Scene" : "After Acquisition Scene"}
-                        overlay={objectOverlayFor(1)}
-                        showBoxes={showOverlay}
-                      />
-                      {showOverlay && (
-                        <canvas
-                          ref={canvasRefAfter}
-                          className="satt-mask-canvas"
-                        />
-                      )}
+                      {/* HUD Feature Pointer Arrows & Callouts */}
                       {renderHudCallouts()}
                     </div>
-                  </div>
-                </div>
-              ) : (
-                /* Single Central Viewport Display */
-                <div className="satt-canvas-container" style={{ transform: `scale(${zoomLevel})` }}>
-                  <AnnotatedScene
-                    src={
-                      bitemporalPhotoView === 'before'
-                        ? beforeImageSrc
-                        : bitemporalPhotoView === 'after' || bitemporalPhotoView === 'mask'
-                        ? afterImageSrc
-                        : currentImageSrc
-                    }
-                    alt="Satellite Scene Viewport"
-                    overlay={objectOverlayFor(bitemporalPhotoView === 'after' || bitemporalPhotoView === 'mask' ? 1 : 0)}
-                    showBoxes={showOverlay}
-                  />
-
-                  {/* Server-provided surface mask */}
-                  {showOverlay && (
-                    <canvas
-                      ref={canvasRef}
-                      className="satt-mask-canvas"
-                    />
                   )}
 
-                  {/* HUD Feature Pointer Arrows & Callouts */}
-                  {renderHudCallouts()}
-                </div>
-              )}
+                  {/* Floating HUD Land Use Distribution Overlay (Exact layout matching screenshot) */}
+                  {showLandUseHud && landUseData.length > 0 && (
+                    <div className="satt-viewport-hud-landuse">
+                      <div className="satt-hud-header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span className="satt-hud-title">{t('landUseTitle', activeLang)}</span>
+                          {isBitemporal && (
+                            <span style={{ fontSize: '9px', color: '#38bdf8', fontWeight: 700, background: 'rgba(56, 189, 248, 0.15)', padding: '1px 5px', borderRadius: '3px' }}>
+                              {activeLandUseTab === 'before' ? 'T1' : 'T2'}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowLandUseHud(false)}
+                          className="satt-hud-close-btn"
+                          title="Hide Land Use HUD"
+                        >
+                          <IconX size={12} />
+                        </button>
+                      </div>
 
-              {/* Floating HUD Land Use Distribution Overlay (Exact layout matching screenshot) */}
-              {showLandUseHud && landUseData.length > 0 && (
-                <div className="satt-viewport-hud-landuse">
-                  <div className="satt-hud-header">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span className="satt-hud-title">{t('landUseTitle', activeLang)}</span>
-                      {isBitemporal && (
-                        <span style={{ fontSize: '9px', color: '#38bdf8', fontWeight: 700, background: 'rgba(56, 189, 248, 0.15)', padding: '1px 5px', borderRadius: '3px' }}>
-                          {activeLandUseTab === 'before' ? 'T1' : 'T2'}
-                        </span>
-                      )}
+                      <div className="satt-hud-body">
+                        {/* Donut Chart */}
+                        <div className="satt-hud-chart-wrap">
+                          <svg className="satt-landuse-svg" viewBox="0 0 100 100">
+                            {(() => {
+                              let accum = 0;
+                              const r = 34;
+                              const c = 2 * Math.PI * r;
+                              const tot = landUseData.reduce((sum, d) => sum + d.pct, 0) || 100;
+                              return landUseData.map((d, idx) => {
+                                const len = (d.pct / tot) * c;
+                                const offset = -accum;
+                                accum += len;
+                                return (
+                                  <circle
+                                    key={idx}
+                                    cx="50"
+                                    cy="50"
+                                    r={r}
+                                    fill="none"
+                                    stroke={d.color}
+                                    strokeWidth="15"
+                                    strokeDasharray={`${len} ${c - len}`}
+                                    strokeDashoffset={offset}
+                                  />
+                                );
+                              });
+                            })()}
+                          </svg>
+                        </div>
+
+                        {/* Legend Rows with Square Swatches */}
+                        <div className="satt-hud-legend">
+                          {landUseData.map((item, i) => (
+                            <div key={i} className="satt-hud-row">
+                              <div className="satt-hud-row-left">
+                                <span className="satt-hud-swatch" style={{ background: item.color, boxShadow: `0 0 6px ${item.color}` }} />
+                                <span className="satt-hud-name">
+                                  {item.name === 'FOREST' ? t('forestLabel', activeLang) :
+                                    item.name === 'AGRICULTURAL' ? t('agriLabel', activeLang) :
+                                      item.name === 'URBAN' ? t('urbanLabel', activeLang) :
+                                        item.name === 'WATER' ? t('waterLabel', activeLang) :
+                                          item.name === 'OTHER' ? t('otherLabel', activeLang) : item.name}
+                                </span>
+                              </div>
+                              <span className="satt-hud-pct">{Math.round(item.pct)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
+                  )}
+
+                  {/* Bottom Right Fullscreen Option Button */}
+                  <div className="satt-viewport-fullscreen-corner" style={{ position: 'absolute', bottom: '12px', right: '12px', zIndex: 15 }}>
                     <button
                       type="button"
-                      onClick={() => setShowLandUseHud(false)}
-                      className="satt-hud-close-btn"
-                      title="Hide Land Use HUD"
+                      onClick={toggleFullscreen}
+                      className={cn("satt-vp-btn", isFullscreen && "satt-vp-btn-active text-cyan-400")}
+                      title={isFullscreen ? "Exit Fullscreen (Esc)" : "Fullscreen View (पूरा स्क्रीन)"}
+                      style={{
+                        background: 'rgba(15, 23, 42, 0.88)',
+                        border: '1px solid rgba(56, 189, 248, 0.45)',
+                        borderRadius: '8px',
+                        color: isFullscreen ? '#38bdf8' : '#f1f5f9',
+                        padding: '8px 10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.65)',
+                        backdropFilter: 'blur(8px)',
+                        transition: 'all 0.15s ease',
+                      }}
                     >
-                      <IconX size={12} />
+                      {isFullscreen ? <IconMinimize size={17} /> : <IconMaximize size={17} />}
+                      <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.4px' }}>
+                        {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                      </span>
                     </button>
                   </div>
 
-                  <div className="satt-hud-body">
-                    {/* Donut Chart */}
-                    <div className="satt-hud-chart-wrap">
-                      <svg className="satt-landuse-svg" viewBox="0 0 100 100">
-                        {(() => {
-                          let accum = 0;
-                          const r = 34;
-                          const c = 2 * Math.PI * r;
-                          const tot = landUseData.reduce((sum, d) => sum + d.pct, 0) || 100;
-                          return landUseData.map((d, idx) => {
-                            const len = (d.pct / tot) * c;
-                            const offset = -accum;
-                            accum += len;
-                            return (
-                              <circle
-                                key={idx}
-                                cx="50"
-                                cy="50"
-                                r={r}
-                                fill="none"
-                                stroke={d.color}
-                                strokeWidth="15"
-                                strokeDasharray={`${len} ${c - len}`}
-                                strokeDashoffset={offset}
-                              />
-                            );
-                          });
-                        })()}
-                      </svg>
+                  {/* Bottom Left Scale Indicator */}
+                  <div className="satt-viewport-scale" hidden={Boolean(result?.analysis_report)}>
+                    <div className="satt-scale-line" />
+                    <div className="satt-scale-labels">
+                      <span>0</span>
+                      <span>250</span>
+                      <span>500</span>
+                      <span>1,000 m</span>
+                    </div>
+                  </div>
+                </div>
+
+              </section>
+
+              {/* Card 2: AI Analysis & Satellite Interpretation (Big & Clear) */}
+              <section className="satt-card satt-analysis-card satt-analysis-expanded">
+                <div className="satt-analysis-header">
+                  <div className="satt-card-title satt-big-title">
+                    <IconSparkles size={20} stroke={2} className="satt-title-icon text-amber-400" />
+                    <span>{t('execTitle', activeLang)}</span>
+                  </div>
+                  <div className="satt-analysis-badge-wrap">
+                    {isBitemporal ? (
+                      <span className="satt-tag-pill satt-tag-cyan" style={{ marginRight: 6 }}>
+                        <IconLayersIntersect size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                        Before / After Differential
+                      </span>
+                    ) : isFusion ? (
+                      <span className="satt-tag-pill satt-tag-cyan" style={{ marginRight: 6 }}>
+                        <IconLayersIntersect size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                        Optical + SAR Fusion
+                      </span>
+                    ) : null}
+                    {running ? (
+                      <span className="satt-tag-pill satt-tag-amber satt-match-badge">
+                        <span className="satt-running-pulse-dot" style={{ display: 'inline-block', marginRight: 6 }} />
+                        Analyzing...
+                      </span>
+                    ) : (
+                      <span className="satt-tag-pill satt-tag-green satt-match-badge">
+                        {result?.analysis_report ? "Confidence unavailable" : Boolean((result as any)?.cloud_vision) ? ((result as any)?.cloud_vision?.provider_id === 'ollama' ? "Local Ollama · unverified" : "Cloud interpretation · unverified") : (result?.decision as any)?.code === "MODEL_DISAGREEMENT" ? "Unable to identify reliably" : `${Math.round((result?.trust_score ?? 0) * 100)}% Evidence support`}
+                      </span>
+                    )}
+
+                    {/* 🎧 Listen / Read Out Loud Button */}
+                    <button
+                      type="button"
+                      onClick={handleToggleSpeech}
+                      className={cn("satt-listen-btn", isSpeaking && "satt-listen-btn-active")}
+                      title={isSpeaking ? (activeLang === 'hi' ? 'रोकें (Stop)' : activeLang === 'bn' ? 'থামান (Stop)' : 'Stop reading') : (activeLang === 'hi' ? 'रिपोर्ट सुनें (Listen)' : activeLang === 'bn' ? 'রিপোর্ট শুনুন (Listen)' : 'Listen to Interpretation')}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '5px 12px',
+                        borderRadius: '20px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        border: isSpeaking ? '1px solid #38bdf8' : '1px solid rgba(56, 189, 248, 0.45)',
+                        background: isSpeaking ? 'linear-gradient(135deg, rgba(2, 132, 199, 0.4), rgba(56, 189, 248, 0.35))' : 'rgba(15, 23, 42, 0.85)',
+                        color: isSpeaking ? '#38bdf8' : '#f1f5f9',
+                        boxShadow: isSpeaking ? '0 0 14px rgba(56, 189, 248, 0.5)' : 'none',
+                        transition: 'all 0.2s ease',
+                        marginLeft: '8px',
+                      }}
+                    >
+                      {isSpeaking ? (
+                        <>
+                          <IconPlayerStop size={14} style={{ color: '#f87171' }} />
+                          <span>{activeLang === 'hi' ? 'रोकें' : activeLang === 'bn' ? 'থামান' : 'Stop'}</span>
+                          <span className="satt-running-pulse-dot" style={{ background: '#38bdf8', width: 6, height: 6 }} />
+                        </>
+                      ) : (
+                        <>
+                          <IconVolume size={15} style={{ color: '#38bdf8' }} />
+                          <span>{activeLang === 'hi' ? 'सुनें' : activeLang === 'bn' ? 'শুনুন' : 'Listen'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 1. Primary AI Findings & Narrative */}
+                {isCloud ? (
+                  <div className="satt-cloud-analysis-container" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+                    {/* Engine badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 14px',
+                        borderRadius: '20px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(99, 102, 241, 0.16))',
+                        border: '1px solid rgba(56, 189, 248, 0.4)',
+                        color: '#38bdf8',
+                        letterSpacing: '0.2px'
+                      }}>
+                        <IconSparkles size={16} className="text-sky-400" />
+                        <span>{t('analysisBy', activeLang)}: {cloudProvider} {cloudModel ? `(${cloudModel})` : ""}</span>
+                      </span>
                     </div>
 
-                    {/* Legend Rows with Square Swatches */}
-                    <div className="satt-hud-legend">
-                      {landUseData.map((item, i) => (
-                        <div key={i} className="satt-hud-row">
-                          <div className="satt-hud-row-left">
-                            <span className="satt-hud-swatch" style={{ background: item.color, boxShadow: `0 0 6px ${item.color}` }} />
-                            <span className="satt-hud-name">
-                              {item.name === 'FOREST' ? t('forestLabel', activeLang) :
-                               item.name === 'AGRICULTURAL' ? t('agriLabel', activeLang) :
-                               item.name === 'URBAN' ? t('urbanLabel', activeLang) :
-                               item.name === 'WATER' ? t('waterLabel', activeLang) :
-                               item.name === 'OTHER' ? t('otherLabel', activeLang) : item.name}
+                    {/* Description (paragraphs) */}
+                    <div style={{
+                      background: 'rgba(15, 23, 42, 0.65)',
+                      border: '1px solid rgba(56, 189, 248, 0.2)',
+                      borderRadius: '10px',
+                      padding: '16px 18px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 700 }}>
+                        <IconEye size={15} style={{ color: '#38bdf8' }} />
+                        <span>{t('sceneDescTitle', activeLang)}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', color: '#f1f5f9', fontSize: '14.5px', lineHeight: '1.65' }}>
+                        {(cloudDescParagraphs.length > 0 ? cloudDescParagraphs : [cloudDescription || cloudAnswer]).map((para: string, pIdx: number) => (
+                          <p key={pIdx} style={{ margin: 0 }}>{translateText(para, activeLang)}</p>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Answer */}
+                    <div style={{
+                      background: 'rgba(2, 132, 199, 0.08)',
+                      border: '1px solid rgba(2, 132, 199, 0.3)',
+                      borderRadius: '10px',
+                      padding: '14px 18px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#38bdf8', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 700 }}>
+                        <IconSparkles size={15} />
+                        <span>{t('answerTitle', activeLang)}</span>
+                      </div>
+                      <div style={{ color: '#ffffff', fontSize: '15px', fontWeight: 500, lineHeight: '1.6' }}>
+                        {(() => {
+                          const text = cloudAnswer || "";
+                          let points = text
+                            .split(/(?:\s*\(\d+\)\s*|\n\s*[•\-*]\s*|\n\s*\d+\.\s*|\n{2,})/)
+                            .map((p: string) => p.trim().replace(/^[•\-*]\s*/, ''))
+                            .filter((p: string) => p.length > 0);
+
+                          if (points.length === 1 && text.includes('\n')) {
+                            points = text.split('\n').map((p: string) => p.trim().replace(/^[•\-*]\s*/, '')).filter((p: string) => p.length > 0);
+                          }
+
+                          if (points.length > 1) {
+                            return (
+                              <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {points.map((pt: string, idx: number) => (
+                                  <li key={idx} style={{ lineHeight: '1.6', fontSize: '14.5px', color: '#f8fafc' }}>
+                                    {translateText(pt, activeLang)}
+                                  </li>
+                                ))}
+                              </ul>
+                            );
+                          }
+                          return <span>{translateText(text, activeLang)}</span>;
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                ) : result?.analysis_report ? (
+                  <SpecialistReport report={result.analysis_report} lang={activeLang} />
+                ) : (
+                  /* Big, Clear Analysis Presentation */
+                  <div className="satt-big-analysis-box" style={{ marginTop: '12px' }}>
+                    <div className="satt-big-ai-badge">
+                      <IconBrain size={26} stroke={1.8} />
+                      <span>Neural Insight</span>
+                    </div>
+                    <div className="satt-big-ai-content">
+                      {running ? (
+                        <div className="satt-skeleton-text-block">
+                          <div className="satt-skeleton-line" style={{ width: '85%' }}></div>
+                          <div className="satt-skeleton-line" style={{ width: '60%' }}></div>
+                          <div className="satt-skeleton-line" style={{ width: '90%' }}></div>
+                          <div className="satt-skeleton-line" style={{ width: '70%' }}></div>
+                        </div>
+                      ) : (
+                        <p className="satt-big-analysis-text">
+                          {dynamicAssessment}
+                        </p>
+                      )}
+                      <div className="satt-big-summary-tag">
+                        <strong>{Boolean((result as any)?.cloud_vision) ? "Analysis mode:" : "Candidate finding:"}</strong> <span>{result?.short_answer || (isBitemporal ? "TEMPORAL CHANGE SUMMARY" : isFusion ? "SAR-OPTICAL FUSION ASSESSMENT" : "SATELLITE SCENE ASSESSMENT")}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Scene Feature Inventory Grid: Detected in Scene (Present) | Absent / Not Detected (Image 1 side-by-side layout) */}
+                {((!isBitemporal && !isFusion) || bitemporalSubTab === 'inventory') && (
+                  <div className="satt-analysis-grid" style={{ marginTop: '14px', gridTemplateColumns: presentInventoryList.length && absentInventoryList.length ? undefined : '1fr' }}>
+                    {/* Sub-Card 1: Detected Objects (Present) */}
+                    {presentInventoryList.length > 0 && <div className="satt-subcard satt-detected-objects-card">
+                      <div className="satt-subcard-header">
+                        <div className="satt-subcard-title">
+                          <IconCircleCheck size={16} className="text-emerald-400" />
+                          <span>{t('detectedPresentTitle', activeLang)}</span>
+                        </div>
+                        <span className="satt-count-pill">{presentInventoryList.length} {t('foundCount', activeLang)}</span>
+                      </div>
+                      <div className="satt-subcard-list">
+                        {presentInventoryList.map((item, idx) => (
+                          <div key={idx} className="satt-detected-row">
+                            <div className="satt-row-left">
+                              <span className="satt-obj-icon">{item.icon || "📍"}</span>
+                              <div className="satt-obj-texts">
+                                <span className="satt-obj-name">{translateText(item.name, activeLang)}</span>
+                                {item.detail && <span className="satt-obj-conf">{translateText(item.detail, activeLang)}</span>}
+                              </div>
+                            </div>
+                            <span className={cn("satt-tag-pill", getBadgeClass(item.badge || item.name))}>
+                              {translateText(item.badge || item.name, activeLang)}
                             </span>
                           </div>
-                          <span className="satt-hud-pct">{Math.round(item.pct)}%</span>
+                        ))}
+                      </div>
+                    </div>}
+
+                    {/* Sub-Card 2: Absent / Not Detected */}
+                    {absentInventoryList.length > 0 && <div className="satt-subcard satt-anomalies-card">
+                      <div className="satt-subcard-header">
+                        <div className="satt-subcard-title">
+                          <IconX size={16} className="text-slate-400" />
+                          <span>{t('absentTitle', activeLang)}</span>
+                        </div>
+                        <span className="satt-count-pill" style={{ color: '#94a3b8', background: 'rgba(100, 116, 139, 0.2)', borderColor: 'rgba(100, 116, 139, 0.4)' }}>
+                          {absentInventoryList.length} {t('absentCount', activeLang)}
+                        </span>
+                      </div>
+                      <div className="satt-subcard-list">
+                        {
+                          absentInventoryList.map((item, idx) => (
+                            <div key={idx} className="satt-detected-row">
+                              <div className="satt-row-left">
+                                <span className="satt-obj-icon">{item.icon || "❌"}</span>
+                                <div className="satt-obj-texts">
+                                  <span className="satt-obj-name">{translateText(item.name, activeLang)}</span>
+                                  <span className="satt-obj-conf">{translateText(item.detail || "Not observed in scene", activeLang)}</span>
+                                </div>
+                              </div>
+                              <span className={cn("satt-tag-pill", getBadgeClass(item.badge || "Absent"))}>
+                                {translateText(item.badge || "Absent", activeLang)}
+                              </span>
+                            </div>
+                          ))
+                        }
+                      </div>
+                    </div>}
+                  </div>
+                )}
+
+                {/* 3. Bitemporal / Fusion Matrices (If Bitemporal or Fusion mode) */}
+                {isBitemporal ? (
+                  <div className="satt-bitemporal-toggle-row" style={{ marginTop: '14px' }}>
+                    <button
+                      type="button"
+                      className={cn("satt-sub-toggle-btn", bitemporalSubTab === 'diff' && "satt-sub-toggle-active")}
+                      onClick={() => setBitemporalSubTab('diff')}
+                    >
+                      <IconGitCompare size={14} />
+                      <span>{t('beforeVsAfterBtn', activeLang)}</span>
+                      <span className="satt-count-pill" style={{ marginLeft: 6 }}>{diffList.length} Verified</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={cn("satt-sub-toggle-btn", bitemporalSubTab === 'inventory' && "satt-sub-toggle-active")}
+                      onClick={() => setBitemporalSubTab('inventory')}
+                    >
+                      <IconListCheck size={14} />
+                      <span>{t('sceneInventoryBtn', activeLang)}</span>
+                    </button>
+                  </div>
+                ) : isFusion ? (
+                  <div className="satt-bitemporal-toggle-row" style={{ marginTop: '14px' }}>
+                    <button
+                      type="button"
+                      className={cn("satt-sub-toggle-btn", bitemporalSubTab === 'diff' && "satt-sub-toggle-active")}
+                      onClick={() => setBitemporalSubTab('diff')}
+                    >
+                      <IconLayersIntersect size={14} />
+                      <span>{t('fusionMatrixTitle', activeLang)}</span>
+                      <span className="satt-count-pill" style={{ marginLeft: 6 }}>{fusionList.length} Verified</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={cn("satt-sub-toggle-btn", bitemporalSubTab === 'inventory' && "satt-sub-toggle-active")}
+                      onClick={() => setBitemporalSubTab('inventory')}
+                    >
+                      <IconListCheck size={14} />
+                      <span>{t('sceneInventoryBtn', activeLang)}</span>
+                    </button>
+                  </div>
+                ) : null}
+
+                {/* If Bitemporal & diff view: render Temporal Variance Matrix */}
+                {isBitemporal && bitemporalSubTab === 'diff' ? (
+                  <div className="satt-bitemporal-diff-container" style={{ marginTop: '14px' }}>
+                    <div className="satt-diff-header-bar">
+                      <div className="satt-diff-header-left">
+                        <span className="satt-diff-main-title">{t('diffMatrixTitle', activeLang)}</span>
+                        <span className="satt-diff-sub-title">Quantified physical shifts, surface expansion &amp; structural impact</span>
+                      </div>
+                      <span className="satt-badge-accent">Sub-Pixel Coregistered</span>
+                    </div>
+
+                    <div className="satt-diff-cards-grid">
+                      {diffList.map((item, idx) => (
+                        <div key={idx} className={cn("satt-diff-card", `satt-diff-card-${item.delta_type}`)}>
+                          <div className="satt-diff-card-top">
+                            <div className="satt-diff-card-title-wrap">
+                              <span className="satt-diff-icon">{item.icon}</span>
+                              <span className="satt-diff-name">{translateText(item.feature, activeLang)}</span>
+                            </div>
+                            <span className={cn("satt-delta-badge", `satt-delta-${item.delta_type}`)}>
+                              {translateText(item.delta_val, activeLang)}
+                            </span>
+                          </div>
+
+                          <div className="satt-diff-transition-row">
+                            <div className="satt-transition-node satt-node-before">
+                              <span className="satt-node-label">Before (T1)</span>
+                              <span className="satt-node-val">{translateText(item.before_val, activeLang)}</span>
+                            </div>
+                            <div className="satt-transition-arrow">
+                              <span>➔</span>
+                            </div>
+                            <div className="satt-transition-node satt-node-after">
+                              <span className="satt-node-label">After (T2)</span>
+                              <span className="satt-node-val">{translateText(item.after_val, activeLang)}</span>
+                            </div>
+                          </div>
+
+                          <div className="satt-diff-card-details">
+                            {item.metric && (
+                              <div className="satt-diff-detail-line">
+                                <span className="satt-detail-label">Measured Delta:</span>
+                                <span className="satt-detail-highlight">{item.metric}</span>
+                              </div>
+                            )}
+                            {item.location && (
+                              <div className="satt-diff-detail-line">
+                                <span className="satt-detail-label">Sector / Area:</span>
+                                <span className="satt-detail-text">{item.location}</span>
+                              </div>
+                            )}
+                            {item.impact && (
+                              <div className="satt-diff-impact-box">
+                                <span className="satt-impact-icon">ℹ️</span>
+                                <span className="satt-impact-text">{translateText(item.impact, activeLang)}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* Bottom Right Fullscreen Option Button */}
-              <div className="satt-viewport-fullscreen-corner" style={{ position: 'absolute', bottom: '12px', right: '12px', zIndex: 15 }}>
-                <button
-                  type="button"
-                  onClick={toggleFullscreen}
-                  className={cn("satt-vp-btn", isFullscreen && "satt-vp-btn-active text-cyan-400")}
-                  title={isFullscreen ? "Exit Fullscreen (Esc)" : "Fullscreen View (पूरा स्क्रीन)"}
-                  style={{
-                    background: 'rgba(15, 23, 42, 0.88)',
-                    border: '1px solid rgba(56, 189, 248, 0.45)',
-                    borderRadius: '8px',
-                    color: isFullscreen ? '#38bdf8' : '#f1f5f9',
-                    padding: '8px 10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.65)',
-                    backdropFilter: 'blur(8px)',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {isFullscreen ? <IconMinimize size={17} /> : <IconMaximize size={17} />}
-                  <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.4px' }}>
-                    {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                  </span>
-                </button>
-              </div>
-
-              {/* Bottom Left Scale Indicator */}
-              <div className="satt-viewport-scale" hidden={Boolean(result?.analysis_report)}>
-                <div className="satt-scale-line" />
-                <div className="satt-scale-labels">
-                  <span>0</span>
-                  <span>250</span>
-                  <span>500</span>
-                  <span>1,000 m</span>
-                </div>
-              </div>
-            </div>
-
-          </section>
-
-          {/* Card 2: AI Analysis & Satellite Interpretation (Big & Clear) */}
-          <section className="satt-card satt-analysis-card satt-analysis-expanded">
-            <div className="satt-analysis-header">
-              <div className="satt-card-title satt-big-title">
-                <IconSparkles size={20} stroke={2} className="satt-title-icon text-amber-400" />
-                <span>{t('execTitle', activeLang)}</span>
-              </div>
-              <div className="satt-analysis-badge-wrap">
-                {isBitemporal ? (
-                  <span className="satt-tag-pill satt-tag-cyan" style={{ marginRight: 6 }}>
-                    <IconLayersIntersect size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-                    Before / After Differential
-                  </span>
-                ) : isFusion ? (
-                  <span className="satt-tag-pill satt-tag-cyan" style={{ marginRight: 6 }}>
-                    <IconLayersIntersect size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
-                    Optical + SAR Fusion
-                  </span>
-                ) : null}
-                {running || (hasStarted && !result) ? (
-                  <span className="satt-tag-pill satt-tag-amber satt-match-badge">
-                    <span className="satt-running-pulse-dot" style={{ display: 'inline-block', marginRight: 6 }} />
-                    Analyzing...
-                  </span>
-                ) : (
-                  <span className="satt-tag-pill satt-tag-green satt-match-badge">
-                    {result?.analysis_report ? "Confidence unavailable" : Boolean((result as any)?.cloud_vision) ? ((result as any)?.cloud_vision?.provider_id === 'ollama' ? "Local Ollama · unverified" : "Cloud interpretation · unverified") : (result?.decision as any)?.code === "MODEL_DISAGREEMENT" ? "Unable to identify reliably" : `${Math.round((result?.trust_score ?? 0) * 100)}% Evidence support`}
-                  </span>
-                )}
-
-                {/* 🎧 Listen / Read Out Loud Button */}
-                <button
-                  type="button"
-                  onClick={handleToggleSpeech}
-                  className={cn("satt-listen-btn", isSpeaking && "satt-listen-btn-active")}
-                  title={isSpeaking ? (activeLang === 'hi' ? 'रोकें (Stop)' : activeLang === 'bn' ? 'থামান (Stop)' : 'Stop reading') : (activeLang === 'hi' ? 'रिपोर्ट सुनें (Listen)' : activeLang === 'bn' ? 'রিপোর্ট শুনুন (Listen)' : 'Listen to Interpretation')}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '5px 12px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    border: isSpeaking ? '1px solid #38bdf8' : '1px solid rgba(56, 189, 248, 0.45)',
-                    background: isSpeaking ? 'linear-gradient(135deg, rgba(2, 132, 199, 0.4), rgba(56, 189, 248, 0.35))' : 'rgba(15, 23, 42, 0.85)',
-                    color: isSpeaking ? '#38bdf8' : '#f1f5f9',
-                    boxShadow: isSpeaking ? '0 0 14px rgba(56, 189, 248, 0.5)' : 'none',
-                    transition: 'all 0.2s ease',
-                    marginLeft: '8px',
-                  }}
-                >
-                  {isSpeaking ? (
-                    <>
-                      <IconPlayerStop size={14} style={{ color: '#f87171' }} />
-                      <span>{activeLang === 'hi' ? 'रोकें' : activeLang === 'bn' ? 'থামান' : 'Stop'}</span>
-                      <span className="satt-running-pulse-dot" style={{ background: '#38bdf8', width: 6, height: 6 }} />
-                    </>
-                  ) : (
-                    <>
-                      <IconVolume size={15} style={{ color: '#38bdf8' }} />
-                      <span>{activeLang === 'hi' ? 'सुनें' : activeLang === 'bn' ? 'শুনুন' : 'Listen'}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* 1. Primary AI Findings & Narrative */}
-            {isCloud ? (
-              <div className="satt-cloud-analysis-container" style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
-                {/* Engine badge */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 14px',
-                    borderRadius: '20px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(99, 102, 241, 0.16))',
-                    border: '1px solid rgba(56, 189, 248, 0.4)',
-                    color: '#38bdf8',
-                    letterSpacing: '0.2px'
-                  }}>
-                    <IconSparkles size={16} className="text-sky-400" />
-                    <span>{t('analysisBy', activeLang)}: {cloudProvider} {cloudModel ? `(${cloudModel})` : ""}</span>
-                  </span>
-                </div>
-
-                {/* Description (paragraphs) */}
-                <div style={{
-                  background: 'rgba(15, 23, 42, 0.65)',
-                  border: '1px solid rgba(56, 189, 248, 0.2)',
-                  borderRadius: '10px',
-                  padding: '16px 18px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 700 }}>
-                    <IconEye size={15} style={{ color: '#38bdf8' }} />
-                    <span>{t('sceneDescTitle', activeLang)}</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', color: '#f1f5f9', fontSize: '14.5px', lineHeight: '1.65' }}>
-                    {(cloudDescParagraphs.length > 0 ? cloudDescParagraphs : [cloudDescription || cloudAnswer]).map((para: string, pIdx: number) => (
-                      <p key={pIdx} style={{ margin: 0 }}>{translateText(para, activeLang)}</p>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Answer */}
-                <div style={{
-                  background: 'rgba(2, 132, 199, 0.08)',
-                  border: '1px solid rgba(2, 132, 199, 0.3)',
-                  borderRadius: '10px',
-                  padding: '14px 18px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#38bdf8', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.8px', fontWeight: 700 }}>
-                    <IconSparkles size={15} />
-                    <span>{t('answerTitle', activeLang)}</span>
-                  </div>
-                  <div style={{ color: '#ffffff', fontSize: '15px', fontWeight: 500, lineHeight: '1.6' }}>
-                    {(() => {
-                      const text = cloudAnswer || "";
-                      let points = text
-                        .split(/(?:\s*\(\d+\)\s*|\n\s*[•\-*]\s*|\n\s*\d+\.\s*|\n{2,})/)
-                        .map((p: string) => p.trim().replace(/^[•\-*]\s*/, ''))
-                        .filter((p: string) => p.length > 0);
-
-                      if (points.length === 1 && text.includes('\n')) {
-                        points = text.split('\n').map((p: string) => p.trim().replace(/^[•\-*]\s*/, '')).filter((p: string) => p.length > 0);
-                      }
-
-                      if (points.length > 1) {
-                        return (
-                          <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {points.map((pt: string, idx: number) => (
-                              <li key={idx} style={{ lineHeight: '1.6', fontSize: '14.5px', color: '#f8fafc' }}>
-                                {translateText(pt, activeLang)}
-                              </li>
-                            ))}
-                          </ul>
-                        );
-                      }
-                      return <span>{translateText(text, activeLang)}</span>;
-                    })()}
-                  </div>
-                </div>
-              </div>
-            ) : result?.analysis_report ? (
-              <SpecialistReport report={result.analysis_report} lang={activeLang} />
-            ) : (
-              /* Big, Clear Analysis Presentation */
-              <div className="satt-big-analysis-box" style={{ marginTop: '12px' }}>
-                <div className="satt-big-ai-badge">
-                  <IconBrain size={26} stroke={1.8} />
-                  <span>Neural Insight</span>
-                </div>
-                <div className="satt-big-ai-content">
-                  {running || (hasStarted && !result) ? (
-                    <div className="satt-skeleton-text-block">
-                      <div className="satt-skeleton-line" style={{ width: '85%' }}></div>
-                      <div className="satt-skeleton-line" style={{ width: '60%' }}></div>
-                      <div className="satt-skeleton-line" style={{ width: '90%' }}></div>
-                      <div className="satt-skeleton-line" style={{ width: '70%' }}></div>
-                    </div>
-                  ) : (
-                    <p className="satt-big-analysis-text">
-                      {dynamicAssessment}
-                    </p>
-                  )}
-                  <div className="satt-big-summary-tag">
-                    <strong>{Boolean((result as any)?.cloud_vision) ? "Analysis mode:" : "Candidate finding:"}</strong> <span>{result?.short_answer || (isBitemporal ? "TEMPORAL CHANGE SUMMARY" : isFusion ? "SAR-OPTICAL FUSION ASSESSMENT" : "SATELLITE SCENE ASSESSMENT")}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 2. Scene Feature Inventory Grid: Detected in Scene (Present) | Absent / Not Detected (Image 1 side-by-side layout) */}
-            {((!isBitemporal && !isFusion) || bitemporalSubTab === 'inventory') && (
-              <div className="satt-analysis-grid" style={{ marginTop: '14px', gridTemplateColumns: presentInventoryList.length && absentInventoryList.length ? undefined : '1fr' }}>
-                {/* Sub-Card 1: Detected Objects (Present) */}
-                {presentInventoryList.length > 0 && <div className="satt-subcard satt-detected-objects-card">
-                  <div className="satt-subcard-header">
-                    <div className="satt-subcard-title">
-                      <IconCircleCheck size={16} className="text-emerald-400" />
-                      <span>{t('detectedPresentTitle', activeLang)}</span>
-                    </div>
-                    <span className="satt-count-pill">{presentInventoryList.length} {t('foundCount', activeLang)}</span>
-                  </div>
-                  <div className="satt-subcard-list">
-                    {presentInventoryList.map((item, idx) => (
-                      <div key={idx} className="satt-detected-row">
-                        <div className="satt-row-left">
-                          <span className="satt-obj-icon">{item.icon || "📍"}</span>
-                          <div className="satt-obj-texts">
-                            <span className="satt-obj-name">{translateText(item.name, activeLang)}</span>
-                            {item.detail && <span className="satt-obj-conf">{translateText(item.detail, activeLang)}</span>}
-                          </div>
-                        </div>
-                        <span className={cn("satt-tag-pill", getBadgeClass(item.badge || item.name))}>
-                          {translateText(item.badge || item.name, activeLang)}
-                        </span>
+                ) : isFusion && bitemporalSubTab === 'diff' ? (
+                  <div className="satt-bitemporal-diff-container" style={{ marginTop: '14px' }}>
+                    <div className="satt-diff-header-bar">
+                      <div className="satt-diff-header-left">
+                        <span className="satt-diff-main-title">{t('fusionMatrixTitle', activeLang)}</span>
+                        <span className="satt-diff-sub-title">Joint multi-sensor verification combining visible spectral reflectance and radar microwave backscatter</span>
                       </div>
-                    ))}
-                  </div>
-                </div>}
-
-                {/* Sub-Card 2: Absent / Not Detected */}
-                {absentInventoryList.length > 0 && <div className="satt-subcard satt-anomalies-card">
-                  <div className="satt-subcard-header">
-                    <div className="satt-subcard-title">
-                      <IconX size={16} className="text-slate-400" />
-                      <span>{t('absentTitle', activeLang)}</span>
+                      <span className="satt-badge-accent">Multi-Sensor Coincident</span>
                     </div>
-                    <span className="satt-count-pill" style={{ color: '#94a3b8', background: 'rgba(100, 116, 139, 0.2)', borderColor: 'rgba(100, 116, 139, 0.4)' }}>
-                      {absentInventoryList.length} {t('absentCount', activeLang)}
-                    </span>
-                  </div>
-                  <div className="satt-subcard-list">
-                    {
-                      absentInventoryList.map((item, idx) => (
-                        <div key={idx} className="satt-detected-row">
-                          <div className="satt-row-left">
-                            <span className="satt-obj-icon">{item.icon || "❌"}</span>
-                            <div className="satt-obj-texts">
-                              <span className="satt-obj-name">{translateText(item.name, activeLang)}</span>
-                              <span className="satt-obj-conf">{translateText(item.detail || "Not observed in scene", activeLang)}</span>
+
+                    <div className="satt-diff-cards-grid">
+                      {fusionList.map((item: (typeof DEFAULT_FUSION_BREAKDOWN)[number], idx: number) => (
+                        <div key={idx} className={cn("satt-diff-card", `satt-diff-card-${item.delta_type}`)}>
+                          <div className="satt-diff-card-top">
+                            <div className="satt-diff-card-title-wrap">
+                              <span className="satt-diff-icon">{item.icon}</span>
+                              <span className="satt-diff-name">{translateText(item.feature, activeLang)}</span>
+                            </div>
+                            <span className={cn("satt-delta-badge", `satt-delta-${item.delta_type}`)}>
+                              {translateText(item.delta_val, activeLang)}
+                            </span>
+                          </div>
+
+                          <div className="satt-diff-transition-row">
+                            <div className="satt-transition-node" style={{ background: 'rgba(56, 189, 248, 0.12)', borderColor: 'rgba(56, 189, 248, 0.35)' }}>
+                              <span className="satt-node-label" style={{ color: '#38bdf8' }}>{item.sensor1_label}</span>
+                              <span className="satt-node-val">{translateText(item.sensor1_val, activeLang)}</span>
+                            </div>
+                            <div className="satt-transition-arrow">
+                              <span style={{ color: '#38bdf8' }}>⟷</span>
+                            </div>
+                            <div className="satt-transition-node" style={{ background: 'rgba(234, 179, 8, 0.12)', borderColor: 'rgba(234, 179, 8, 0.35)' }}>
+                              <span className="satt-node-label" style={{ color: '#eab308' }}>{item.sensor2_label}</span>
+                              <span className="satt-node-val">{translateText(item.sensor2_val, activeLang)}</span>
                             </div>
                           </div>
-                          <span className={cn("satt-tag-pill", getBadgeClass(item.badge || "Absent"))}>
-                            {translateText(item.badge || "Absent", activeLang)}
+
+                          <div className="satt-diff-card-details">
+                            {item.metric && (
+                              <div className="satt-diff-detail-line">
+                                <span className="satt-detail-label">Consensus Type:</span>
+                                <span className="satt-detail-highlight">{item.metric}</span>
+                              </div>
+                            )}
+                            {item.location && (
+                              <div className="satt-diff-detail-line">
+                                <span className="satt-detail-label">Observation Domain:</span>
+                                <span className="satt-detail-text">{item.location}</span>
+                              </div>
+                            )}
+                            {item.impact && (
+                              <div className="satt-diff-impact-box">
+                                <span className="satt-impact-icon">ℹ️</span>
+                                <span className="satt-impact-text">{translateText(item.impact, activeLang)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            </main>
+
+            {/* ── COL 4: RIGHT COLUMN (Mission Insights, Task Execution & AI Specialists) ── */}
+            <aside className="satt-insights-column">
+              {/* Card 1: Mission Insights */}
+              <section className="satt-card satt-insights-card">
+                <div className="satt-card-header">
+                  <div className="satt-card-title">
+                    <IconActivity size={17} stroke={2} className="satt-title-icon text-amber-400" />
+                    <span>{t('missionInsightsTitle', activeLang)}</span>
+                  </div>
+                  <span className="satt-priority-badge">{t('highPriorityBadge', activeLang)}</span>
+                </div>
+
+                {/* Circular Gauge + Overall Assessment */}
+                {(() => {
+                  const displayTrust = trustPercent > 0 ? trustPercent : isCloud ? 85 : 0;
+                  const displayVisual = visualPercent > 0 ? visualPercent : isCloud ? 88 : 0;
+                  const displayClarity = inputQualityPct > 0 ? inputQualityPct : isCloud ? 96 : 0;
+                  const displaySpectral = spectralCoverage > 0 ? spectralCoverage : 0;
+
+                  return (
+                    <>
+                      <div className="satt-gauge-row">
+                        <div className="satt-radial-meter">
+                          <svg className="satt-radial-svg" viewBox="0 0 100 100">
+                            <circle
+                              className="satt-radial-track"
+                              cx="50"
+                              cy="50"
+                              r="40"
+                              strokeWidth="8"
+                            />
+                            <circle
+                              className="satt-radial-fill"
+                              cx="50"
+                              cy="50"
+                              r="40"
+                              strokeWidth="8"
+                              strokeDasharray="251.2"
+                              strokeDashoffset={251.2 - (251.2 * displayTrust) / 100}
+                            />
+                          </svg>
+                          <div className="satt-radial-content">
+                            <span className="satt-radial-num">{result ? `${displayTrust}%` : "0%"}</span>
+                            <span className="satt-radial-lbl">{isCloud ? "AI Support" : "Evidence support"}</span>
+                          </div>
+                        </div>
+
+                        <div className="satt-assessment-box">
+                          <strong>{t('overallAssessment', activeLang)}</strong>
+                          <p className="satt-assessment-summary">
+                            {translateText(assessmentSummary, activeLang)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Metrics Progress Bars */}
+                      <div className="satt-metrics-bars">
+                        <div className="satt-mbar-item">
+                          <div className="satt-mbar-head">
+                            <span>{t('neuralConfidence', activeLang)}</span>
+                            <b>{displayVisual}%</b>
+                          </div>
+                          <div className="satt-mbar-track">
+                            <div className="satt-mbar-fill bg-blue-500" style={{ width: `${displayVisual}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="satt-mbar-item">
+                          <div className="satt-mbar-head">
+                            <span>{t('spectralVerification', activeLang)}</span>
+                            <b>{(result as any)?.spectral_indices?.status === 'not available' ? "RGB (N/A)" : `${displaySpectral}%`}</b>
+                          </div>
+                          <div className="satt-mbar-track">
+                            <div className="satt-mbar-fill bg-teal-400" style={{ width: `${displaySpectral}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="satt-mbar-item">
+                          <div className="satt-mbar-head">
+                            <span>{t('sensorClarity', activeLang)}</span>
+                            <b>{displayClarity}%</b>
+                          </div>
+                          <div className="satt-mbar-track">
+                            <div className="satt-mbar-fill bg-cyan-400" style={{ width: `${displayClarity}%` }} />
+                          </div>
+                        </div>
+
+                        <div className="satt-risk-row">
+                          <span>{t('riskLevel', activeLang)}</span>
+                          <span className={isCloud && result ? "satt-risk-pill satt-risk-pill-green" : riskInfo.pillClass}>
+                            {isCloud && result ? t('nominal', activeLang) : riskInfo.label}
                           </span>
                         </div>
-                      ))
-                    }
-                  </div>
-                </div>}
-              </div>
-            )}
-
-            {/* 3. Bitemporal / Fusion Matrices (If Bitemporal or Fusion mode) */}
-            {isBitemporal ? (
-              <div className="satt-bitemporal-toggle-row" style={{ marginTop: '14px' }}>
-                <button
-                  type="button"
-                  className={cn("satt-sub-toggle-btn", bitemporalSubTab === 'diff' && "satt-sub-toggle-active")}
-                  onClick={() => setBitemporalSubTab('diff')}
-                >
-                  <IconGitCompare size={14} />
-                  <span>{t('beforeVsAfterBtn', activeLang)}</span>
-                  <span className="satt-count-pill" style={{ marginLeft: 6 }}>{diffList.length} Verified</span>
-                </button>
-                <button
-                  type="button"
-                  className={cn("satt-sub-toggle-btn", bitemporalSubTab === 'inventory' && "satt-sub-toggle-active")}
-                  onClick={() => setBitemporalSubTab('inventory')}
-                >
-                  <IconListCheck size={14} />
-                  <span>{t('sceneInventoryBtn', activeLang)}</span>
-                </button>
-              </div>
-            ) : isFusion ? (
-              <div className="satt-bitemporal-toggle-row" style={{ marginTop: '14px' }}>
-                <button
-                  type="button"
-                  className={cn("satt-sub-toggle-btn", bitemporalSubTab === 'diff' && "satt-sub-toggle-active")}
-                  onClick={() => setBitemporalSubTab('diff')}
-                >
-                  <IconLayersIntersect size={14} />
-                  <span>{t('fusionMatrixTitle', activeLang)}</span>
-                  <span className="satt-count-pill" style={{ marginLeft: 6 }}>{fusionList.length} Verified</span>
-                </button>
-                <button
-                  type="button"
-                  className={cn("satt-sub-toggle-btn", bitemporalSubTab === 'inventory' && "satt-sub-toggle-active")}
-                  onClick={() => setBitemporalSubTab('inventory')}
-                >
-                  <IconListCheck size={14} />
-                  <span>{t('sceneInventoryBtn', activeLang)}</span>
-                </button>
-              </div>
-            ) : null}
-
-            {/* If Bitemporal & diff view: render Temporal Variance Matrix */}
-            {isBitemporal && bitemporalSubTab === 'diff' ? (
-              <div className="satt-bitemporal-diff-container" style={{ marginTop: '14px' }}>
-                <div className="satt-diff-header-bar">
-                  <div className="satt-diff-header-left">
-                    <span className="satt-diff-main-title">{t('diffMatrixTitle', activeLang)}</span>
-                    <span className="satt-diff-sub-title">Quantified physical shifts, surface expansion &amp; structural impact</span>
-                  </div>
-                  <span className="satt-badge-accent">Sub-Pixel Coregistered</span>
-                </div>
-
-                <div className="satt-diff-cards-grid">
-                  {diffList.map((item, idx) => (
-                    <div key={idx} className={cn("satt-diff-card", `satt-diff-card-${item.delta_type}`)}>
-                      <div className="satt-diff-card-top">
-                        <div className="satt-diff-card-title-wrap">
-                          <span className="satt-diff-icon">{item.icon}</span>
-                          <span className="satt-diff-name">{translateText(item.feature, activeLang)}</span>
-                        </div>
-                        <span className={cn("satt-delta-badge", `satt-delta-${item.delta_type}`)}>
-                          {translateText(item.delta_val, activeLang)}
-                        </span>
                       </div>
-
-                      <div className="satt-diff-transition-row">
-                        <div className="satt-transition-node satt-node-before">
-                          <span className="satt-node-label">Before (T1)</span>
-                          <span className="satt-node-val">{translateText(item.before_val, activeLang)}</span>
-                        </div>
-                        <div className="satt-transition-arrow">
-                          <span>➔</span>
-                        </div>
-                        <div className="satt-transition-node satt-node-after">
-                          <span className="satt-node-label">After (T2)</span>
-                          <span className="satt-node-val">{translateText(item.after_val, activeLang)}</span>
-                        </div>
-                      </div>
-
-                      <div className="satt-diff-card-details">
-                        {item.metric && (
-                          <div className="satt-diff-detail-line">
-                            <span className="satt-detail-label">Measured Delta:</span>
-                            <span className="satt-detail-highlight">{item.metric}</span>
-                          </div>
-                        )}
-                        {item.location && (
-                          <div className="satt-diff-detail-line">
-                            <span className="satt-detail-label">Sector / Area:</span>
-                            <span className="satt-detail-text">{item.location}</span>
-                          </div>
-                        )}
-                        {item.impact && (
-                          <div className="satt-diff-impact-box">
-                            <span className="satt-impact-icon">ℹ️</span>
-                            <span className="satt-impact-text">{translateText(item.impact, activeLang)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : isFusion && bitemporalSubTab === 'diff' ? (
-              <div className="satt-bitemporal-diff-container" style={{ marginTop: '14px' }}>
-                <div className="satt-diff-header-bar">
-                  <div className="satt-diff-header-left">
-                    <span className="satt-diff-main-title">{t('fusionMatrixTitle', activeLang)}</span>
-                    <span className="satt-diff-sub-title">Joint multi-sensor verification combining visible spectral reflectance and radar microwave backscatter</span>
-                  </div>
-                  <span className="satt-badge-accent">Multi-Sensor Coincident</span>
-                </div>
-
-                <div className="satt-diff-cards-grid">
-                  {fusionList.map((item: (typeof DEFAULT_FUSION_BREAKDOWN)[number], idx: number) => (
-                    <div key={idx} className={cn("satt-diff-card", `satt-diff-card-${item.delta_type}`)}>
-                      <div className="satt-diff-card-top">
-                        <div className="satt-diff-card-title-wrap">
-                          <span className="satt-diff-icon">{item.icon}</span>
-                          <span className="satt-diff-name">{translateText(item.feature, activeLang)}</span>
-                        </div>
-                        <span className={cn("satt-delta-badge", `satt-delta-${item.delta_type}`)}>
-                          {translateText(item.delta_val, activeLang)}
-                        </span>
-                      </div>
-
-                      <div className="satt-diff-transition-row">
-                        <div className="satt-transition-node" style={{ background: 'rgba(56, 189, 248, 0.12)', borderColor: 'rgba(56, 189, 248, 0.35)' }}>
-                          <span className="satt-node-label" style={{ color: '#38bdf8' }}>{item.sensor1_label}</span>
-                          <span className="satt-node-val">{translateText(item.sensor1_val, activeLang)}</span>
-                        </div>
-                        <div className="satt-transition-arrow">
-                          <span style={{ color: '#38bdf8' }}>⟷</span>
-                        </div>
-                        <div className="satt-transition-node" style={{ background: 'rgba(234, 179, 8, 0.12)', borderColor: 'rgba(234, 179, 8, 0.35)' }}>
-                          <span className="satt-node-label" style={{ color: '#eab308' }}>{item.sensor2_label}</span>
-                          <span className="satt-node-val">{translateText(item.sensor2_val, activeLang)}</span>
-                        </div>
-                      </div>
-
-                      <div className="satt-diff-card-details">
-                        {item.metric && (
-                          <div className="satt-diff-detail-line">
-                            <span className="satt-detail-label">Consensus Type:</span>
-                            <span className="satt-detail-highlight">{item.metric}</span>
-                          </div>
-                        )}
-                        {item.location && (
-                          <div className="satt-diff-detail-line">
-                            <span className="satt-detail-label">Observation Domain:</span>
-                            <span className="satt-detail-text">{item.location}</span>
-                          </div>
-                        )}
-                        {item.impact && (
-                          <div className="satt-diff-impact-box">
-                            <span className="satt-impact-icon">ℹ️</span>
-                            <span className="satt-impact-text">{translateText(item.impact, activeLang)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </section>
-        </main>
-
-        {/* ── COL 4: RIGHT COLUMN (Mission Insights, Task Execution & AI Specialists) ── */}
-        <aside className="satt-insights-column">
-          {/* Card 1: Mission Insights */}
-          <section className="satt-card satt-insights-card">
-            <div className="satt-card-header">
-              <div className="satt-card-title">
-                <IconActivity size={17} stroke={2} className="satt-title-icon text-amber-400" />
-                <span>{t('missionInsightsTitle', activeLang)}</span>
-              </div>
-              <span className="satt-priority-badge">{t('highPriorityBadge', activeLang)}</span>
-            </div>
-
-            {/* Circular Gauge + Overall Assessment */}
-            {(() => {
-              const displayTrust = trustPercent > 0 ? trustPercent : isCloud ? 85 : 0;
-              const displayVisual = visualPercent > 0 ? visualPercent : isCloud ? 88 : 0;
-              const displayClarity = inputQualityPct > 0 ? inputQualityPct : isCloud ? 96 : 0;
-              const displaySpectral = spectralCoverage > 0 ? spectralCoverage : 0;
-
-              return (
-                <>
-                  <div className="satt-gauge-row">
-                    <div className="satt-radial-meter">
-                      <svg className="satt-radial-svg" viewBox="0 0 100 100">
-                        <circle
-                          className="satt-radial-track"
-                          cx="50"
-                          cy="50"
-                          r="40"
-                          strokeWidth="8"
-                        />
-                        <circle
-                          className="satt-radial-fill"
-                          cx="50"
-                          cy="50"
-                          r="40"
-                          strokeWidth="8"
-                          strokeDasharray="251.2"
-                          strokeDashoffset={251.2 - (251.2 * displayTrust) / 100}
-                        />
-                      </svg>
-                      <div className="satt-radial-content">
-                        <span className="satt-radial-num">{result ? `${displayTrust}%` : "0%"}</span>
-                        <span className="satt-radial-lbl">{isCloud ? "AI Support" : "Evidence support"}</span>
-                      </div>
-                    </div>
-
-                    <div className="satt-assessment-box">
-                      <strong>{t('overallAssessment', activeLang)}</strong>
-                      <p className="satt-assessment-summary">
-                        {translateText(assessmentSummary, activeLang)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Metrics Progress Bars */}
-                  <div className="satt-metrics-bars">
-                    <div className="satt-mbar-item">
-                      <div className="satt-mbar-head">
-                        <span>{t('neuralConfidence', activeLang)}</span>
-                        <b>{displayVisual}%</b>
-                      </div>
-                      <div className="satt-mbar-track">
-                        <div className="satt-mbar-fill bg-blue-500" style={{ width: `${displayVisual}%` }} />
-                      </div>
-                    </div>
-
-                    <div className="satt-mbar-item">
-                      <div className="satt-mbar-head">
-                        <span>{t('spectralVerification', activeLang)}</span>
-                        <b>{(result as any)?.spectral_indices?.status === 'not available' ? "RGB (N/A)" : `${displaySpectral}%`}</b>
-                      </div>
-                      <div className="satt-mbar-track">
-                        <div className="satt-mbar-fill bg-teal-400" style={{ width: `${displaySpectral}%` }} />
-                      </div>
-                    </div>
-
-                    <div className="satt-mbar-item">
-                      <div className="satt-mbar-head">
-                        <span>{t('sensorClarity', activeLang)}</span>
-                        <b>{displayClarity}%</b>
-                      </div>
-                      <div className="satt-mbar-track">
-                        <div className="satt-mbar-fill bg-cyan-400" style={{ width: `${displayClarity}%` }} />
-                      </div>
-                    </div>
-
-                    <div className="satt-risk-row">
-                      <span>{t('riskLevel', activeLang)}</span>
-                      <span className={isCloud && result ? "satt-risk-pill satt-risk-pill-green" : riskInfo.pillClass}>
-                        {isCloud && result ? t('nominal', activeLang) : riskInfo.label}
-                      </span>
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-
-            {/* Spectral Indices (NDVI / NDWI) Card */}
-            {(() => {
-              const spec = (result as any)?.spectral_indices;
-              if (!spec) return null;
-              if (spec.status === "not available") {
-                return (
-                  <div
-                    style={{
-                      margin: "12px 0 6px",
-                      padding: "10px 12px",
-                      borderRadius: "8px",
-                      background: "rgba(245, 158, 11, 0.08)",
-                      border: "1px solid rgba(245, 158, 11, 0.3)",
-                      fontSize: "12px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        marginBottom: "4px",
-                        color: "#fbbf24",
-                      }}
-                    >
-                      <span>⚠️</span>
-                      <span>Spectral indices not available for RGB image</span>
-                    </div>
-                    <div style={{ fontSize: "11px", color: "#9ca3af", lineHeight: "1.4" }}>
-                      Physical NDVI (vegetation) and NDWI (water) require Near-Infrared (NIR) band. Standard 3-channel RGB imagery cannot measure physical spectral absorption.
-                    </div>
-                  </div>
-                );
-              }
-              if (spec.status === "available") {
-                return (
-                  <div
-                    style={{
-                      margin: "12px 0 6px",
-                      padding: "10px 12px",
-                      borderRadius: "8px",
-                      background: "rgba(16, 185, 129, 0.08)",
-                      border: "1px solid rgba(16, 185, 129, 0.3)",
-                      fontSize: "12px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        marginBottom: "6px",
-                        color: "#34d399",
-                      }}
-                    >
-                      <span>🔬</span>
-                      <span>Calibrated Spectral Indices</span>
-                    </div>
-                    {spec.indices?.ndvi?.mean != null && (
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#a7f3d0" }}>
-                        <span>NDVI (Mean):</span>
-                        <b style={{ fontFamily: "monospace" }}>{spec.indices.ndvi.mean.toFixed(3)}</b>
-                      </div>
-                    )}
-                    {spec.indices?.ndwi?.mean != null && (
-                      <div style={{ display: "flex", justifyContent: "space-between", color: "#a7f3d0" }}>
-                        <span>NDWI (Mean):</span>
-                        <b style={{ fontFamily: "monospace" }}>{spec.indices.ndwi.mean.toFixed(3)}</b>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-              return null;
-            })()}
-
-
-            {/* Quick Actions */}
-            <div className="satt-quick-actions">
-              <div className="satt-qa-title">
-                <IconSparkles size={14} /> Quick Actions
-              </div>
-              <div className="satt-qa-btns">
-                <button type="button" className="satt-qa-btn" onClick={downloadReport}>
-                  <IconDownload size={14} />
-                  <span>{downloaded ? "Downloading PDF..." : "Download Report (PDF)"}</span>
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* Card 2: Task Execution */}
-          <section className="satt-card satt-execution-card">
-            <div className="satt-exec-header">
-              <div className="flex items-center gap-2">
-                <span className="satt-exec-title">TASK EXECUTION</span>
-                <span className="satt-exec-badge">6 STEPS</span>
-              </div>
-              <button
-                type="button"
-                className="satt-exec-rerun-btn"
-                title="Watch slow step-by-step neural execution"
-                onClick={() => triggerLiveStepAnimation(result)}
-                disabled={running}
-              >
-                {running ? (
-                  <>
-                    <span className="satt-running-pulse-dot" />
-                    <span>In Progress</span>
-                  </>
-                ) : (
-                  <>
-                    <span>▶ Live Run</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Sub-tabs: Task Execution / Analysis Log */}
-            <div className="satt-exec-tabs">
-              <button
-                type="button"
-                className={cn("satt-etab", executionTab === 'execution' && "satt-etab-active")}
-                onClick={() => setExecutionTab("execution")}
-              >
-                Task Execution
-              </button>
-              <button
-                type="button"
-                className={cn("satt-etab", executionTab === 'log' && "satt-etab-active")}
-                onClick={() => setExecutionTab("log")}
-              >
-                Analysis Log {events.length > 0 && `(${events.length})`}
-              </button>
-            </div>
-
-            {executionTab === 'execution' ? (
-              /* Timeline Steps */
-              <div className="satt-timeline-list">
-                {AGENT_STEPS.map((step, idx) => {
-                  const isRunning = running && stepIndex === idx;
-                  const isDone = completedSteps.includes(idx);
-                  return (
-                    <div key={idx} className={cn("satt-timeline-item", isRunning && "satt-timeline-item-active")}>
-                      <div className="satt-timeline-marker">
-                        {isDone ? (
-                          <span className="satt-tmark-done"><IconCheck size={12} stroke={3} /></span>
-                        ) : isRunning ? (
-                          <span className="satt-tmark-running" />
-                        ) : (
-                          <span className="satt-tmark-pending" />
-                        )}
-                        {idx < AGENT_STEPS.length - 1 && (
-                          <span className={cn("satt-timeline-line", (isDone || isRunning) && "satt-timeline-line-active")} />
-                        )}
-                      </div>
-                      <div className="satt-timeline-body">
-                        <div className="satt-tstep-title">{step.title}</div>
-                        <div className="satt-tstep-desc">
-                          {isDone ? (
-                            <span className="text-emerald-400 font-semibold">✓ Completed</span>
-                          ) : isRunning ? (
-                            <span className="text-cyan-400 font-semibold flex items-center gap-1.5">
-                              <span className="satt-running-pulse-dot" /> In Progress...
-                            </span>
-                          ) : (
-                            <span className="text-slate-500 font-medium">Pending</span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="satt-tstep-time">
-                        {idx === 0 ? "2 min" : idx === 1 ? "4 min" : idx === 2 ? "3 min" : idx === 3 ? "5 min" : "2 min"}
-                      </div>
-                    </div>
+                    </>
                   );
-                })}
-              </div>
-            ) : (
-              /* Analysis Log */
-              <div className="satt-analysis-log-list">
-                {events.length === 0 ? (
-                  <div className="text-xs text-slate-400 py-6 text-center">
-                    No telemetry logs yet. Run an analysis or click &quot;Live Run&quot;.
+                })()}
+
+                {/* Spectral Indices (NDVI / NDWI) Card */}
+                {(() => {
+                  const spec = (result as any)?.spectral_indices;
+                  if (!spec) return null;
+                  if (spec.status === "not available") {
+                    return (
+                      <div
+                        style={{
+                          margin: "12px 0 6px",
+                          padding: "10px 12px",
+                          borderRadius: "8px",
+                          background: "rgba(245, 158, 11, 0.08)",
+                          border: "1px solid rgba(245, 158, 11, 0.3)",
+                          fontSize: "12px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            marginBottom: "4px",
+                            color: "#fbbf24",
+                          }}
+                        >
+                          <span>⚠️</span>
+                          <span>Spectral indices not available for RGB image</span>
+                        </div>
+                        <div style={{ fontSize: "11px", color: "#9ca3af", lineHeight: "1.4" }}>
+                          Physical NDVI (vegetation) and NDWI (water) require Near-Infrared (NIR) band. Standard 3-channel RGB imagery cannot measure physical spectral absorption.
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (spec.status === "available") {
+                    return (
+                      <div
+                        style={{
+                          margin: "12px 0 6px",
+                          padding: "10px 12px",
+                          borderRadius: "8px",
+                          background: "rgba(16, 185, 129, 0.08)",
+                          border: "1px solid rgba(16, 185, 129, 0.3)",
+                          fontSize: "12px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            marginBottom: "6px",
+                            color: "#34d399",
+                          }}
+                        >
+                          <span>🔬</span>
+                          <span>Calibrated Spectral Indices</span>
+                        </div>
+                        {spec.indices?.ndvi?.mean != null && (
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", color: "#a7f3d0" }}>
+                            <span>NDVI (Mean):</span>
+                            <b style={{ fontFamily: "monospace" }}>{spec.indices.ndvi.mean.toFixed(3)}</b>
+                          </div>
+                        )}
+                        {spec.indices?.ndwi?.mean != null && (
+                          <div style={{ display: "flex", justifyContent: "space-between", color: "#a7f3d0" }}>
+                            <span>NDWI (Mean):</span>
+                            <b style={{ fontFamily: "monospace" }}>{spec.indices.ndwi.mean.toFixed(3)}</b>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+
+                {/* Quick Actions */}
+                <div className="satt-quick-actions">
+                  <div className="satt-qa-title">
+                    <IconSparkles size={14} /> Quick Actions
+                  </div>
+                  <div className="satt-qa-btns">
+                    <button type="button" className="satt-qa-btn" onClick={downloadReport}>
+                      <IconDownload size={14} />
+                      <span>{downloaded ? "Downloading PDF..." : "Download Report (PDF)"}</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              {/* Card 2: Task Execution */}
+              <section className="satt-card satt-execution-card">
+                <div className="satt-exec-header">
+                  <div className="flex items-center gap-2">
+                    <span className="satt-exec-title">TASK EXECUTION</span>
+                    <span className="satt-exec-badge">6 STEPS</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="satt-exec-rerun-btn"
+                    title="Watch slow step-by-step neural execution"
+                    onClick={() => triggerLiveStepAnimation(result)}
+                    disabled={running}
+                  >
+                    {running ? (
+                      <>
+                        <span className="satt-running-pulse-dot" />
+                        <span>In Progress</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>▶ Live Run</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Sub-tabs: Task Execution / Analysis Log */}
+                <div className="satt-exec-tabs">
+                  <button
+                    type="button"
+                    className={cn("satt-etab", executionTab === 'execution' && "satt-etab-active")}
+                    onClick={() => setExecutionTab("execution")}
+                  >
+                    Task Execution
+                  </button>
+                  <button
+                    type="button"
+                    className={cn("satt-etab", executionTab === 'log' && "satt-etab-active")}
+                    onClick={() => setExecutionTab("log")}
+                  >
+                    Analysis Log {events.length > 0 && `(${events.length})`}
+                  </button>
+                </div>
+
+                {executionTab === 'execution' ? (
+                  /* Timeline Steps */
+                  <div className="satt-timeline-list">
+                    {AGENT_STEPS.map((step, idx) => {
+                      const isRunning = running && stepIndex === idx;
+                      const isDone = completedSteps.includes(idx);
+                      return (
+                        <div key={idx} className={cn("satt-timeline-item", isRunning && "satt-timeline-item-active")}>
+                          <div className="satt-timeline-marker">
+                            {isDone ? (
+                              <span className="satt-tmark-done"><IconCheck size={12} stroke={3} /></span>
+                            ) : isRunning ? (
+                              <span className="satt-tmark-running" />
+                            ) : (
+                              <span className="satt-tmark-pending" />
+                            )}
+                            {idx < AGENT_STEPS.length - 1 && (
+                              <span className={cn("satt-timeline-line", (isDone || isRunning) && "satt-timeline-line-active")} />
+                            )}
+                          </div>
+                          <div className="satt-timeline-body">
+                            <div className="satt-tstep-title">{step.title}</div>
+                            <div className="satt-tstep-desc">
+                              {isDone ? (
+                                <span className="text-emerald-400 font-semibold">✓ Completed</span>
+                              ) : isRunning ? (
+                                <span className="text-cyan-400 font-semibold flex items-center gap-1.5">
+                                  <span className="satt-running-pulse-dot" /> In Progress...
+                                </span>
+                              ) : (
+                                <span className="text-slate-500 font-medium">Pending</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="satt-tstep-time">
+                            {idx === 0 ? "2 min" : idx === 1 ? "4 min" : idx === 2 ? "3 min" : idx === 3 ? "5 min" : "2 min"}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
-                  events.map((ev, i) => (
-                    <div key={i} className="satt-log-item text-xs font-mono py-1 border-b border-slate-700/30 flex items-start justify-between gap-2">
-                      <div className="flex-1">
-                        <span className="text-cyan-400 font-bold">[{ev.stage || 'TRACE'}]</span>{" "}
-                        <span className="text-slate-200">{ev.description || ev.action}</span>
+                  /* Analysis Log */
+                  <div className="satt-analysis-log-list">
+                    {events.length === 0 ? (
+                      <div className="text-xs text-slate-400 py-6 text-center">
+                        No telemetry logs yet. Run an analysis or click &quot;Live Run&quot;.
                       </div>
-                      {ev.at && <span className="text-slate-500 shrink-0 text-[10px]">{ev.at}</span>}
-                    </div>
-                  ))
+                    ) : (
+                      events.map((ev, i) => (
+                        <div key={i} className="satt-log-item text-xs font-mono py-1 border-b border-slate-700/30 flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <span className="text-cyan-400 font-bold">[{ev.stage || 'TRACE'}]</span>{" "}
+                            <span className="text-slate-200">{ev.description || ev.action}</span>
+                          </div>
+                          {ev.at && <span className="text-slate-500 shrink-0 text-[10px]">{ev.at}</span>}
+                        </div>
+                      ))
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
 
-            {/* Bottom AI Agent Status */}
-            <div className="satt-agent-status-box">
-              <div className="satt-agent-badge">
-                <IconBrain size={14} className={running ? "animate-bounce text-cyan-400" : "text-cyan-400"} />
-                <span>AI Agent</span>
-              </div>
-              <p>{running ? agentMessage : "Analysis complete. Multi-spectral evidence verified and ready."}</p>
-            </div>
-          </section>
-        </aside>
-      </div>
+                {/* Bottom AI Agent Status */}
+                <div className="satt-agent-status-box">
+                  <div className="satt-agent-badge">
+                    <IconBrain size={14} className={running ? "animate-bounce text-cyan-400" : "text-cyan-400"} />
+                    <span>AI Agent</span>
+                  </div>
+                  <p>{running ? agentMessage : "Analysis complete. Multi-spectral evidence verified and ready."}</p>
+                </div>
+              </section>
+            </aside>
+          </div>
 
-      {/* ══════════════════════════════════════════════════════
+          {/* ══════════════════════════════════════════════════════
           3. BOTTOM GLOBAL STATUS BAR / FOOTER (Image 1 Bar)
           ══════════════════════════════════════════════════════ */}
-      <footer className="satt-bottom-bar">
-        <div className="satt-bbar-left">
-          <div className="satt-bbar-item">
-            <IconTargetArrow size={14} className="text-amber-400" />
-            <span>Mission: <b>{activeMissionId === 'howrah' ? "River Hydrological Analysis" : result?.query || "Satellite Intelligence Mission"}</b></span>
-          </div>
-          <div className="satt-bbar-item">
-            <IconSatellite size={14} className="text-cyan-400" />
-            <span>Data Source: <b>{result?.analysis_report ? "Supplied imagery; sensor unverified" : "Sentinel-2 (Optical)"}</b></span>
-          </div>
-          <div className="satt-bbar-item">
-            <IconAdjustments size={14} className="text-purple-400" />
-            <span>Analysis Type: <b>{result?.task || "Not yet selected"}</b></span>
-          </div>
-          <div className="satt-bbar-item">
-            <IconClock size={14} className="text-blue-400" />
-            <span>Processing Time: <b>{result?.analysis_report ? "See execution trace" : "Not measured"}</b></span>
-          </div>
-        </div>
+          <footer className="satt-bottom-bar">
+            <div className="satt-bbar-left">
+              <div className="satt-bbar-item">
+                <IconTargetArrow size={14} className="text-amber-400" />
+                <span>Mission: <b>{activeMissionId === 'howrah' ? "River Hydrological Analysis" : result?.query || "Satellite Intelligence Mission"}</b></span>
+              </div>
+              <div className="satt-bbar-item">
+                <IconSatellite size={14} className="text-cyan-400" />
+                <span>Data Source: <b>{result?.analysis_report ? "Supplied imagery; sensor unverified" : "Sentinel-2 (Optical)"}</b></span>
+              </div>
+              <div className="satt-bbar-item">
+                <IconAdjustments size={14} className="text-purple-400" />
+                <span>Analysis Type: <b>{result?.task || "Not yet selected"}</b></span>
+              </div>
+              <div className="satt-bbar-item">
+                <IconClock size={14} className="text-blue-400" />
+                <span>Processing Time: <b>{result?.analysis_report ? "See execution trace" : "Not measured"}</b></span>
+              </div>
+            </div>
 
-        <div className="satt-bbar-right">
-          <span className="satt-mission-complete-badge">
-            <IconCircleCheck size={14} stroke={2.5} />
-            {running ? "Processing Scene..." : result?.analysis_report ? result.analysis_report.execution_summary.processing_status as string : "Awaiting analysis"}
-          </span>
-        </div>
-      </footer>
+            <div className="satt-bbar-right">
+              <span className="satt-mission-complete-badge">
+                <IconCircleCheck size={14} stroke={2.5} />
+                {running ? "Processing Scene..." : result?.analysis_report ? result.analysis_report.execution_summary.processing_status as string : "Awaiting analysis"}
+              </span>
+            </div>
+          </footer>
         </>
       )}
 

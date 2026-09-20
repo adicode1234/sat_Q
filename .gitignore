@@ -28,11 +28,12 @@ npm-debug.log*
 
 # Large Videos & Media (Exceeds GitHub 100MB limit)
 *.mp4
-frontend/public/videos/
-frontend/dist/videos/
+!frontend/public/videos/
+!frontend/public/videos/*.mp4
+!frontend/dist/videos/
+!frontend/dist/videos/*.mp4
 
 # Large Model Weights & Checkpoints (Exceeds GitHub 100MB limit)
-models/checkpoints/
 *.safetensors
 *.h5
 *.bin
@@ -68,3 +69,6 @@ data/cdvqa/
 evaluation/results*.json
 evaluation/runs/
 evaluation/*.log
+
+# Checkpoints are versioned intact with Git LFS.
+!models/checkpoints/**

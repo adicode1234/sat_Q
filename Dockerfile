@@ -7,10 +7,12 @@
 # --- Stage 1: Frontend Build ---
 FROM node:22-alpine AS frontend-builder
 WORKDIR /web
-COPY frontend/package*.json ./
-RUN npm ci
 COPY frontend/ ./
-RUN npm run build
+# Preserve the reviewed local UI by default, including translation and speech.
+# Opt in to rebuilding only when intentionally updating the frontend.
+ARG REBUILD_FRONTEND=0
+RUN if [ "$REBUILD_FRONTEND" = "1" ]; then npm ci && npm run build; \
+    else test -f dist/index.html; fi
 
 # --- Stage 2: Python Runtime ---
 FROM python:3.12-slim AS runtime

@@ -10937,3 +10937,56 @@ html.satt-theme-light .satt-open-history-sidebar-btn:hover {
   color: #64748b;
   text-align: right;
 }
+
+
+/* Text actions need content-sized controls, unlike the square map icon buttons. */
+.satt-text-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 40px;
+  padding: 9px 14px;
+  border: 1px solid #334b65;
+  border-radius: 8px;
+  background: #10243b;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.satt-text-action:hover:not(:disabled),
+.satt-text-action[aria-pressed="true"] {
+  border-color: #38bdf8;
+  background: #12354f;
+  color: #7dd3fc;
+}
+.satt-text-action:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 3px;
+}
+.satt-text-action-primary {
+  background: #0369a1;
+  border-color: #0284c7;
+  color: #fff;
+}
+.satt-text-action:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.satt-setup-actions {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.satt-dashboard-shortcut {
+  margin-right: auto;
+}
+@media (max-width: 480px) {
+  .satt-dashboard-shortcut {
+    flex-basis: 100%;
+    margin-right: 0;
+  }
+}
